@@ -1,4 +1,4 @@
-function [x,F_hat,F_pc,F_kal,num_iter, C, A, Q] = DynFactorDoz2(X,q,r,p,max_iter, thresh, block)
+function [x,F_hat,F_pc,F_kal,num_iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % "A Quasi?Maximum Likelihood Approach for Large, Approximate Dynamic Factor Models," 
 % The Review of Economics and Statistics, MIT Press, vol. 94(4), pages 1014-1024, November 2012.
@@ -63,7 +63,7 @@ OPTS.disp=0;
 %extract the first r eigenvectors and eigenvalues from cov(x)
 [ v, ~ ] = eigs(cov(x),r,'lm',OPTS);
 
-chi = x*(v*v');                       % common component
+chi = x*(v*v');                       % Common component
 
 d = eye(r);
 
@@ -327,7 +327,7 @@ ss = length(A); % Number of factors
 [xitt,xittm,Ptt,Pttm,loglik_t]=K_filter(initx,initV,y',A,C,R,Q);
 [xsmooth, Vsmooth, VVsmooth]=K_smoother(A,xitt,xittm,Ptt,Pttm,C,R);
 
-% Create all versions of xsmooth, y, Vsmoot, VVsmooth needed
+% Create all versions of xsmooth, y, Vsmooth, VVsmooth needed
 % Global + block
 r = size(xsmooth);
 xSmooth_C = cell(1, length(block));
@@ -464,14 +464,14 @@ function [xitt,xittm,Ptt,Pttm,loglik]=K_filter(initx,initV,x,A,C,R,Q)
 % Pttm = Cov[X(:,t) | y(:,1:t-1)]
 % xitt = E[X(:,t) | y(:,1:t)]
 % Ptt = Cov[X(:,t) | y(:,1:t)]
-%loglik - value of the loglikelihood
+% loglik - value of the loglikelihood
 
 [T,N]=size(x);
 r=size(A,1);
 
 y=x';
 
-
+% Initialization
 xittm=[initx zeros(r,T)];
 xitt=zeros(r,T);
 
@@ -479,6 +479,7 @@ Pttm=zeros(r,r,T);
 Pttm(:,:,1)=initV;
 Ptt=zeros(r,r,T);
 
+% Forward pass over observed data
 for j=1:T
     
     L=inv(C*Pttm(:,:,j)*C'+R);
@@ -535,7 +536,7 @@ J=zeros(r,r,T);
 
 
 for i=1:T-1
-    J(:,:,i)=Ptt(:,:,i)*A'*inv(Pttm(:,:,i+1));
+    J(:,:,i)=Ptt(:,:,i)*A'\Pttm(:,:,i+1);
 end
 
 for i=1:T
