@@ -14,7 +14,7 @@
 % threshold - The threshold value for convergence of the EM algorithm.
 %               Should be between 1e-4 and 1e-7
 
-dir = '/Users/Sigve Borgmo/OneDrive - NTNU/Indok/9. semester/R/DFM';
+dir = '/Users/Sigve Borgmo/OneDrive - NTNU/Indok/Master/dynamic-factor/';
 dataFile = 'Dataset.xlsx';
 dataSheet = 'Data';
 blockFile = 'Blocks.xlsx';
@@ -75,7 +75,7 @@ breakdown = ["Global", "Block", "Idio", "Total"];
 % Running the algorithm
 %***********************
 [normData,F_hat,F_pc,F_kal,num_iter, C, A, Q] = ...
-    DynFactorDoz2(selectedData, factors, factors, 1, maxIterations, threshold, block);
+    DynamicFactorModel(selectedData, factors, factors, 1, maxIterations, threshold, block);
 
 %***********************
 % Testing

@@ -461,12 +461,16 @@ function [xitt,xittm,Ptt,Pttm,loglik]=K_filter(initx,initV,x,A,C,R,Q)
 % initV - the initial state covariance 
 % OUTPUT:
 % xittm = E[X(:,t) | y(:,1:t-1)]
+% x values after transition update
 % Pttm = Cov[X(:,t) | y(:,1:t-1)]
+% Covariance matrix after transition update
 % xitt = E[X(:,t) | y(:,1:t)]
+% x values after observation update
 % Ptt = Cov[X(:,t) | y(:,1:t)]
+% Covariance matrix after observation update
 % loglik - value of the loglikelihood
 
-[T,N]=size(x);
+[T,~]=size(x);
 r=size(A,1);
 
 y=x';
@@ -479,32 +483,40 @@ Pttm=zeros(r,r,T);
 Pttm(:,:,1)=initV;
 Ptt=zeros(r,r,T);
 
+logl = zeros(T,1);
+
 % Forward pass over observed data
 for j=1:T
     
-    L=inv(C*Pttm(:,:,j)*C'+R);
-    nv=size(Pttm,1);
-    xitt(:,j)=xittm(:,j)+Pttm(:,:,j)*C'*L*(y(:,j)-C*xittm(:,j));
-    Ptt(:,:,j)=Pttm(:,:,j)-Pttm(:,:,j)*C'*L*C*Pttm(:,:,j); 
-    xittm(:,j+1)=A*xitt(:,j);
-    Pttm(:,:,j+1)=A*Ptt(:,:,j)*A'+Q;
-    lik(j)=((2*pi)^(-N/2))*(abs((det(C*Pttm(:,:,j)*C'+R)))^(-.5))*...
-        exp(-1/2*(y(:,j)-C*xittm(:,j))'*L*(-1/2*(y(:,j)-C*xittm(:,j))));
+    % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
+    % equations below
+    L = C * Pttm(:,:,j) * C' + R;
+    K = ( Pttm(:,:,j) * C' ) / L;
+    innovation = (y(:,j)-C*xittm(:,j));
+    
+    % Update predictions after observation
+    xitt(:,j) = xittm(:,j) + K * innovation;
+    Ptt(:,:,j) = Pttm(:,:,j) - K * C*Pttm(:,:,j);
+    
+    % Get next transition predictions, predicting one-step-ahead
+    xittm(:,j+1)= A * xitt(:,j);
+    Pttm(:,:,j+1)= A * Ptt (:,:,j) * A' + Q;
+    
+    % Likelihood calculation not used
+    % lik(j)=((2*pi)^(-N/2))*(abs((det(C*Pttm(:,:,j)*C'+R)))^(-.5))*...
+    %    exp(-1/2*(y(:,j)-C*xittm(:,j))'*L*(-1/2*(y(:,j)-C*xittm(:,j))));
     
     
     e = y(:,j) - C*xittm(:,j); % error (innovation)
-    n = length(e);
     ss = length(A);
     d = size(e,1);
     S = C*Pttm(:,:,j)*C' + R;
     GG = C'*diag(1./diag(R))*C;
-    Sinv = inv(S);
     
-    %%%%%%%%%%%%%%%%%%%%%%
-    
+    % Mahalanobis distance calculations, find log likelihood
     detS = prod(diag(R))*det(eye(ss)+Pttm(:,:,j)*GG);
     denom = (2*pi)^(d/2)*sqrt(abs(detS));
-    mahal = sum(e'*Sinv*e,2);
+    mahal = sum((e'/S) * e, 2);
     logl(j) = -0.5*mahal - log(denom);
     
 end
@@ -536,12 +548,15 @@ J=zeros(r,r,T);
 
 
 for i=1:T-1
-    J(:,:,i)=Ptt(:,:,i)*A'\Pttm(:,:,i+1);
+    J(:,:,i)= (Ptt(:,:,i) * A') / Pttm(:,:,i+1);
 end
 
+[var, factors] = size(C);
+L = zeros(var, var, T);
+K = zeros(factors, var, T);
 for i=1:T
-    L(:,:,i)=inv(C*Pttm(:,:,i)*C'+R);
-    K(:,:,i)=Pttm(:,:,i)*C'*L(:,:,i);
+    L(:,:,i)= C * Pttm(:,:,i) * C' + R;
+    K(:,:,i)= (Pttm(:,:,i) * C') / L(:,:,i);
 end
 
 
