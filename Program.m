@@ -15,14 +15,16 @@
 %               Should be between 1e-4 and 1e-7
 
 dir = '/Users/Sigve Borgmo/OneDrive - NTNU/Indok/Master/dynamic-factor/';
-dataFile = 'Dataset.xlsx';
+dataFile = 'Dataset missing_obs.xlsx';
 dataSheet = 'Data';
 blockFile = 'Blocks.xlsx';
 blockSheet = 'B2';
 outputFile = 'DFM_Output';
 maxIterations = 1000;
-inflate = true;
 threshold = 1e-5;
+
+deflate = true;
+logdiff = true;
 
 writeRaw = true;
 writeInput = false;
@@ -34,11 +36,22 @@ writeIMFIndex = false;
 %*********************
 cd(dir);
 
-% Data prep
+% Data preparation
 [data, txt] = xlsread(dataFile, dataSheet, 'A3:BC273');
-[inflateData, txt2] = xlsread(dataFile, 2);
-preparedData = prepData(data, inflateData, inflate);
-[T,n] = size(preparedData);
+
+preparedInput = data;
+
+preparedInput(preparedInput == 0) = NaN;
+
+if deflate
+    preparedInput = deflateAdjust(data);
+end
+if logdiff
+    preparedInput = diff(log(preparedInput));
+    preparedInput(preparedInput == Inf | preparedInput == -Inf) = NaN;
+end
+
+[T,n] = size(preparedInput);
 
 [blockStruct, txtB] = xlsread(blockFile, blockSheet, 'A1:I53');
 [d,b]=size(blockStruct);
@@ -53,7 +66,7 @@ for i=1:b
       commodity = blockStruct(j,i);
       if ~isnan(commodity)
           colNewName = [colNewName colName(commodity)];
-          selectedData = [selectedData, preparedData(:,commodity)];
+          selectedData = [selectedData, preparedInput(:,commodity)];
           rawData = [rawData, data(:,commodity)];
           block(i) = block(i)+1;
       end
@@ -125,7 +138,7 @@ end
 
 if writeIMFIndex
     title=["IMF PALLFNF", ""];
-    xlswrite(filename,preparedData(:,54),"Index",'B2');
+    xlswrite(filename,preparedInput(:,54),"Index",'B2');
     xlswrite(filename,title,"Index",'B1');
     xlswrite(filename,dates',"Index",'A2');
 end
