@@ -65,7 +65,7 @@ OPTS.disp=0;
 
 chi = x*(v*v');                       % Common component
 
-d = eye(r);
+dES = eye(r);
 
 F = x*v;
 
@@ -143,8 +143,8 @@ converged = 0;
 % estimation of the factors with the Kalman filter using as initial values
 % for A, C, Q, R, initx, initV the ones computed with the principal
 % components
-[xitt,xittm,Ptt,Pttm,loglik_t]=K_filter(initx,initV,x,A,C,R,Q);
-[xsmooth, Vsmooth, VVsmooth]=K_smoother(A,xitt,xittm,Ptt,Pttm,C,R);
+[xitt,xittm,Ptt,Pttm,loglik_t]=KalmanFilter(initx,initV,x,A,C,R,Q);
+[xsmooth, Vsmooth, VVsmooth]=KalmanSmoother(A,xitt,xittm,Ptt,Pttm,C,R);
 
 F_kal =  xsmooth(1:r,:)';
 
@@ -256,167 +256,13 @@ while (num_iter < max_iter) && ~converged
     previous_loglik = loglik;
 end
 
-
-
-[xitt,xittm,Ptt,Pttm,loglik_t]=K_filter(initx,initV,x,A,C,R,Q);
-[xsmooth, Vsmooth, VVsmooth]=K_smoother(A,xitt,xittm,Ptt,Pttm,C,R);
+[xitt,xittm,Ptt,Pttm,loglik_t]=KalmanFilter(initx,initV,x,A,C,R,Q);
+[xsmooth, Vsmooth, VVsmooth]=KalmanSmoother(A,xitt,xittm,Ptt,Pttm,C,R);
 
 chi = xsmooth'*C'*diag(Wx) + kron(ones(T,1),Mx);
 
 F_hat =  xsmooth(1:r,:)';
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-function [beta_AQ, gamma_C, gamma_AQ, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, loglik_t, xsmooth] = ...
-    Estep(y, A, C, Q, R, initx, initV, block)
-
-% This function computes the (expected) sufficient statistics for a single Kalman filter sequence.
-%
-% y is the observable and x the hidden state
-
-% INPUTS
-% y(:,t) - the observation at time t
-% A - the system matrix
-% C - the observation matrix 
-% Q - the system covariance 
-% R - the observation covariance
-% initx - the initial state (column) vector 
-% initV - the initial state covariance 
-
-% OUTPUTS: the expected sufficient statistics, i.e.
-% beta = sum_t=1^T (x_t * x'_t-1)
-% gamma = sum_t=1^T (x_t * x'_t)  
-% delta = sum_t=1^T (y_t * x'_t)
-% gamma1 = sum_t=2^T (x_t-1 * x'_t-1)
-% gamma2 = sum_t=2^T (x_t * x'_t)
-% x1  expected value of the initial state
-% V1  variance of the initial state
-% loglik value of the loglikelihood
-% xsmooth expected value of the state
-
-[os, T] = size(y); % os - number of input variables
-ss = length(A); % Number of factors
-
-% use the Kalman smoother to compute 
-% xsmooth = E[X(:,t) | y(:,1:T)]
-% Vsmooth = Cov[X(:,t) | y(:,1:T)]
-% VVsmooth = Cov[X(:,t), X(:,t-1) | y(:,1:T)] t >= 2
-% loglik = sum{t=1}^T log P(y(:,t))
-[xitt,xittm,Ptt,Pttm,loglik_t]=K_filter(initx,initV,y',A,C,R,Q);
-[xsmooth, Vsmooth, VVsmooth]=K_smoother(A,xitt,xittm,Ptt,Pttm,C,R);
-
-% Create all versions of xsmooth, y, Vsmooth, VVsmooth needed
-% Global + block
-r = size(xsmooth);
-xSmooth_C = cell(1, length(block));
-for i=1:length(block)
-    m = [xsmooth(1,:); xsmooth(1+i,:)];
-    xSmooth_C{i} = m;
-end
-
-y_C = cell(1, length(block));
-prev_split = 1;
-split = 1;
-for i=1:length(block)
-    split = split + block(i);
-    y_C{i} = y(prev_split:(split-1),:);
-    prev_split = split;
-end
-
-Vsmooth_C = cell(1, length(block));
-for i=1:length(block)
-    V = zeros(2,2,T);
-    V(1,1,:) = Vsmooth(1,1,:);
-    V(2,2,:) = Vsmooth(1+i,1+i,:);
-    V(1,2,:) = Vsmooth(1,1+i,:);
-    V(2,1,:) = Vsmooth(1,1+i,:);
-    Vsmooth_C{i} = V;
-end
-
-% All factors
-xSmooth_AQ = cell(1, r(1));
-
-for i=1:r(1)
-    m = xsmooth(i,:);
-    xSmooth_AQ{i} = m;
-end
-
-Vsmooth_AQ = cell(1, r(1));
-for i=1:r(1)
-    V = Vsmooth(i,i,:);
-    Vsmooth_AQ{i} = V;
-end
-
-VVsmooth_AQ = cell(1, r(1));
-for i=1:r(1)
-    VV = VVsmooth(i,i,:);
-    VVsmooth_AQ{i} = VV;
-end
-
-% compute the expected sufficient statistics
-delta_C = cell(1, r(1)-1);
-gamma_C = cell(1, r(1)-1);
-
-for i=1:(length(block))
-    delta = zeros(block(i), 2);
-    gamma = zeros(2, 2);
-    delta_C{i} = delta;
-    gamma_C{i} = gamma;
-end
-
-gamma_AQ = zeros(1, r(1));
-beta_AQ = zeros(1, r(1));
-
-for t=1:T
-    % C
-    for i=1:length(block)
-        delta_C{i} = delta_C{i} + y_C{i}(:,t)*xSmooth_C{i}(:,t)';
-        gamma_C{i} = gamma_C{i} + xSmooth_C{i}(:,t)*xSmooth_C{i}(:,t)' + Vsmooth_C{i}(:,:,t);
-    end
-    
-    % AQ
-    for i=1:r(1)
-        gamma_AQ(i) = gamma_AQ(i) + xSmooth_AQ{i}(:,t)*xSmooth_AQ{i}(:,t)' + Vsmooth_AQ{i}(:,:,t);
-        if t>1
-            beta_AQ(i) = beta_AQ(i) + xSmooth_AQ{i}(:,t)*xSmooth_AQ{i}(:,t-1)' + VVsmooth_AQ{i}(:,:,t); 
-        end
-    end
-    
-end
-gamma1_AQ = zeros(1, r(1));
-gamma2_AQ = zeros(1, r(1));
-for i=1:r(1)
-    gamma1_AQ(i) = gamma_AQ(i) - xSmooth_AQ{i}(:,T)*xSmooth_AQ{i}(:,T)' - Vsmooth_AQ{i}(:,:,T);
-    gamma2_AQ(i) = gamma_AQ(i) - xSmooth_AQ{i}(:,1)*xSmooth_AQ{i}(:,1)' - Vsmooth_AQ{i}(:,:,1);
-end
-
-x1 = xsmooth(:,1);
-V1 = Vsmooth(:,:,1);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [converged, decrease] = em_converged(loglik, previous_loglik, threshold, check_increased)
 % EM_CONVERGED Has EM converged?
@@ -448,144 +294,3 @@ end
 delta_loglik = abs(loglik - previous_loglik);
 avg_loglik = (abs(loglik) + abs(previous_loglik) + eps)/2;
 if (delta_loglik / avg_loglik) < threshold, converged = 1; end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [xitt,xittm,Ptt,Pttm,loglik]=K_filter(initx,initV,x,A,C,R,Q)
-% INPUTS
-% x(:,t) - the observation at time t
-% A - the system matrix
-% C - the observation matrix 
-% Q - the system covariance 
-% R - the observation covariance
-% initx - the initial state (column) vector 
-% initV - the initial state covariance 
-% OUTPUT:
-% xittm = E[X(:,t) | y(:,1:t-1)]
-% x values after transition update
-% Pttm = Cov[X(:,t) | y(:,1:t-1)]
-% Covariance matrix after transition update
-% xitt = E[X(:,t) | y(:,1:t)]
-% x values after observation update
-% Ptt = Cov[X(:,t) | y(:,1:t)]
-% Covariance matrix after observation update
-% loglik - value of the loglikelihood
-
-[T,~]=size(x);
-r=size(A,1);
-
-y=x';
-
-% Initialization
-xittm=[initx zeros(r,T)];
-xitt=zeros(r,T);
-
-Pttm=zeros(r,r,T);
-Pttm(:,:,1)=initV;
-Ptt=zeros(r,r,T);
-
-logl = zeros(T,1);
-
-% Forward pass over observed data
-for j=1:T
-    
-    % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
-    % equations below
-    L = C * Pttm(:,:,j) * C' + R;
-    K = ( Pttm(:,:,j) * C' ) / L;
-    innovation = (y(:,j)-C*xittm(:,j));
-    
-    % Update predictions after observation
-    xitt(:,j) = xittm(:,j) + K * innovation;
-    Ptt(:,:,j) = Pttm(:,:,j) - K * C*Pttm(:,:,j);
-    
-    % Get next transition predictions, predicting one-step-ahead
-    xittm(:,j+1)= A * xitt(:,j);
-    Pttm(:,:,j+1)= A * Ptt (:,:,j) * A' + Q;
-    
-    % Likelihood calculation not used
-    % lik(j)=((2*pi)^(-N/2))*(abs((det(C*Pttm(:,:,j)*C'+R)))^(-.5))*...
-    %    exp(-1/2*(y(:,j)-C*xittm(:,j))'*L*(-1/2*(y(:,j)-C*xittm(:,j))));
-    
-    
-    e = y(:,j) - C*xittm(:,j); % error (innovation)
-    ss = length(A);
-    d = size(e,1);
-    S = C*Pttm(:,:,j)*C' + R;
-    GG = C'*diag(1./diag(R))*C;
-    
-    % Mahalanobis distance calculations, find log likelihood
-    detS = prod(diag(R))*det(eye(ss)+Pttm(:,:,j)*GG);
-    denom = (2*pi)^(d/2)*sqrt(abs(detS));
-    mahal = sum((e'/S) * e, 2);
-    logl(j) = -0.5*mahal - log(denom);
-    
-end
-
-loglik=sum(logl);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [xitT,PtT,PtTm]=K_smoother(A,xitt,xittm,Ptt,Pttm,C,R)
-% INPUTS
-% y(:,t) - the observation at time t
-% A - the system matrix
-% xittm = E[X(:,t) | y(:,1:t-1)]
-% Pttm = Cov[X(:,t) | y(:,1:t-1)]
-% xitt = E[X(:,t) | y(:,1:t)]
-% Ptt = Cov[X(:,t) | y(:,1:t)]
-% C - the observation matrix 
-% R - the observation covariance
-
-% OUTPUT:
-% xitT = E[X(:,t) | y(:,1:T)]
-% PtT = Cov[X(:,t) | y(:,1:T)]
-% PtTm = Cov[X(:,t+1),X(:,t) | y(:,1:T)]
-
-[T]=size(xitt,2);
-r=size(A,1);
-Pttm=Pttm(:,:,1:end-1);
-xittm=xittm(:,1:end-1);
-J=zeros(r,r,T);
-
-
-for i=1:T-1
-    J(:,:,i)= (Ptt(:,:,i) * A') / Pttm(:,:,i+1);
-end
-
-[var, factors] = size(C);
-L = zeros(var, var, T);
-K = zeros(factors, var, T);
-for i=1:T
-    L(:,:,i)= C * Pttm(:,:,i) * C' + R;
-    K(:,:,i)= (Pttm(:,:,i) * C') / L(:,:,i);
-end
-
-
-xitT=[zeros(r,T-1)  xitt(:,T)];
-PtT=zeros(r,r,T);
-PtTm=zeros(r,r,T);
-PtT(:,:,T)=Ptt(:,:,T);
-PtTm(:,:,T)=(eye(r)-K(:,:,T)*C)*A*Ptt(:,:,T-1);
-
-for j =1:T-1
-    
-    xitT(:,T-j)= xitt(:,T-j)+J(:,:,T-j)*(xitT(:,T+1-j)-xittm(:,T+1-j));
-    PtT(:,:,T-j)=Ptt(:,:,T-j)+J(:,:,T-j)*(PtT(:,:,T+1-j)-Pttm(:,:,T+1-j))*J(:,:,T-j)';
-    
-    
-end
-
-
-for j =1:T-2
-    PtTm(:,:,T-j)=Ptt(:,:,T-j)*J(:,:,T-j-1)'+J(:,:,T-j)*(PtTm(:,:,T-j+1)-A*Ptt(:,:,T-j))*J(:,:,T-j-1)';
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function XC = center(X)
-%CENTER XC = center(X)
-%	Centers each column of X.
-
-%	J. Rodrigues 26/IV/97, jrodrig@ulb.ac.be
-
-[T, n] = size(X);
-XC = X - ones(T,1)*(sum(X)/T); % Much faster than MEAN with a FOR loop
