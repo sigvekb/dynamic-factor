@@ -74,7 +74,7 @@ for i=1:b
 end
 
 % Output prep
-filename= strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
+filename = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
 factors = length(block)+1;
 varNames = colNewName;
 dates = txt(2:end-1,1)';

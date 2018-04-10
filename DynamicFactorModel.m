@@ -22,7 +22,7 @@ function [x, F_hat, max_iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, th
 % F_hat -   factors from QML
 
 OPTS.disp = 0;
-[T,N] = size(X);
+[~,N] = size(X);
 
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
