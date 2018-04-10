@@ -87,8 +87,10 @@ breakdown = ["Global", "Block", "Idio", "Total"];
 %***********************
 % Running the algorithm
 %***********************
-[normData,F_hat,F_pc,F_kal,num_iter, C, A, Q] = ...
+[normData,F_hat, num_iter, C, A, Q] = ...
     DynamicFactorModel(selectedData, factors, factors, 1, maxIterations, threshold, block);
+
+disp("Finished in " + num_iter + " iterations");
 
 %***********************
 % Testing

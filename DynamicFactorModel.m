@@ -1,4 +1,4 @@
-function [x,F_hat,F_pc,num_iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
+function [x,F_hat,iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % "A Quasi?Maximum Likelihood Approach for Large, Approximate Dynamic Factor Models," 
 % The Review of Economics and Statistics, MIT Press, vol. 94(4), pages 1014-1024, November 2012.
@@ -69,11 +69,7 @@ pseudo_x(isnan(pseudo_x)) = 0;
 
 chi = pseudo_x*(v*v');                       % Common component
 
-d = eye(r);
-
-F = x*v;
-
-F_pc = F;                           % factors using principal components
+F = pseudo_x*v;
 
 if p > 0    
     z = F;
@@ -93,7 +89,7 @@ end
 Q = diag(diag(Q));
 A = diag(diag(A));
 
-R = diag(diag(cov(x-chi)));         % R diagonal
+R = diag(diag(nancov(x-chi)));         % R diagonal
 
 z = F;
 Z = [];
@@ -125,31 +121,27 @@ for elem=1:(length(block)-1)
     end
 end
 
-% initialize the estimation and define ueful quantities
-
+% Initialize the estimation and define ueful quantities
 previous_loglik = -inf;
-num_iter = 1;
+iter = 1;
 LL = zeros(1, max_iter);
 converged = 0;
 
-os = size(C,1);     % number of cross sections ( N )
-ss = size(A,1);     % number of factors ( r )
 y = x';
 
 % Estimation with the EM algorithm
 % Repeat the algorithm until convergence
-while (num_iter < max_iter) && ~converged
+while (iter < max_iter) && ~converged
     
     % E step : computes the expected sufficient statistics 
     % First iteration uses initial values for A, C, Q, R, initx, initV 
     % obtained from the principal component analysis
-    [beta_t_AQ, gamma_t_C, gamma_t_AQ, delta_t_C, gamma1_t_AQ, gamma2_t_AQ, x1, V1, loglik_t,xsmooth] = ...
+    [beta_t_AQ, gamma_t_C, delta_t_C, gamma1_t_AQ, gamma2_t_AQ, x1, V1, loglik_t,xsmooth] = ...
         Estep(y, A, C, Q, R, initx, initV, block);
     
     % Hand over the expected sufficient statistics from E-step
     beta_AQ = beta_t_AQ;        % beta   = sum_t=1^T (f_t * f'_t-1)
     gamma_C = gamma_t_C;        % gamma  = sum_t=1^T (f_t * f'_t)   
-    gamma_AQ = gamma_t_AQ;      % gamma  = sum_t=1^T (f_t * f'_t)
     delta_C = delta_t_C;        % delta  = sum_t=1^T (x_t * f'_t)
     gamma1_AQ = gamma1_t_AQ;    % gamma1 = sum_t=2^T (f_t-1 * f'_t-1)
     gamma2_AQ = gamma2_t_AQ;    % gamma2 = sum_t=2^T (f_t * f'_t)
@@ -158,7 +150,7 @@ while (num_iter < max_iter) && ~converged
                                                                             
     % Update the log likelihood                                                                           
     loglik = loglik_t;
-    LL(num_iter) = loglik;
+    LL(iter) = loglik;
     
     %%% M step 
     % Compute the parameters of the model as a function of the sufficient
@@ -212,8 +204,8 @@ while (num_iter < max_iter) && ~converged
       
     R = diag(diag(R));                  % R diagonal
     
-    if mod(num_iter, 100)==0
-        fprintf('Iteration %d: %f\n', num_iter, loglik);
+    if mod(iter, 100)==0
+        fprintf('Iteration %d: %f\n', iter, loglik);
     end
     
     initx = x1sum;
@@ -221,8 +213,7 @@ while (num_iter < max_iter) && ~converged
     
     converged = em_converged(loglik, previous_loglik, thresh,1);
     
-    % update the counter for the iterations
-    num_iter =  num_iter + 1;
+    iter =  iter + 1;
     
     previous_loglik = loglik;
 end

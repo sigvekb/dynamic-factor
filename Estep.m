@@ -1,4 +1,4 @@
-function [beta_AQ, gamma_C, gamma_AQ, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, loglik_t, xsmooth] = ...
+function [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, loglik_t, xsmooth] = ...
     Estep(y, A, C, Q, R, initx, initV, block)
 
 % This function computes the (expected) sufficient statistics for a single Kalman filter sequence.
@@ -25,10 +25,9 @@ function [beta_AQ, gamma_C, gamma_AQ, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, log
 % loglik value of the loglikelihood
 % xsmooth expected value of the state
 
-[os, T] = size(y); % os - number of input variables
-ss = length(A); % Number of factors
+[~, T] = size(y);
 
-% use the Kalman smoother to compute 
+% Use the Kalman smoother to compute 
 % xsmooth = E[X(:,t) | y(:,1:T)]
 % Vsmooth = Cov[X(:,t) | y(:,1:T)]
 % VVsmooth = Cov[X(:,t), X(:,t-1) | y(:,1:T)] t >= 2
@@ -84,7 +83,6 @@ for i=1:r(1)
     VVsmooth_AQ{i} = VV;
 end
 
-% compute the expected sufficient statistics
 delta_C = cell(1, r(1)-1);
 gamma_C = cell(1, r(1)-1);
 

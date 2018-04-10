@@ -42,7 +42,15 @@ for j=1:T
     K = ( Pttm(:,:,j) * C' ) / L;
     innovation = (y(:,j)-C*xittm(:,j));
     
+    % Set K=0 for missing values
+    [row, ~] = find(isnan(innovation));
+    innovation(isnan(innovation)) = 0;
+    for elem=1:length(row)
+        K(:,row(elem)) = 0;
+    end
+    
     % Update predictions after observation
+    check = K * innovation;
     xitt(:,j) = xittm(:,j) + K * innovation;
     Ptt(:,:,j) = Pttm(:,:,j) - K * C*Pttm(:,:,j);
     
@@ -56,6 +64,7 @@ for j=1:T
     
     
     e = y(:,j) - C*xittm(:,j); % error (innovation)
+    e(isnan(e)) = 0;
     ss = length(A);
     d = size(e,1);
     S = C*Pttm(:,:,j)*C' + R;
