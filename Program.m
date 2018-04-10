@@ -14,7 +14,7 @@
 % threshold - The threshold value for convergence of the EM algorithm.
 %               Should be between 1e-4 and 1e-7
 
-dir = '/Users/Sigve Borgmo/OneDrive - NTNU/Indok/Master/dynamic-factor/';
+dir = '/Users/sigvekb/Master/dynamic-factor';
 dataFile = 'Dataset missing_obs.xlsx';
 dataSheet = 'Data';
 blockFile = 'Blocks.xlsx';
@@ -44,7 +44,7 @@ preparedInput = data;
 preparedInput(preparedInput == 0) = NaN;
 
 if deflate
-    preparedInput = deflateAdjust(data);
+    preparedInput = deflateAdjust(preparedInput);
 end
 if logdiff
     preparedInput = diff(log(preparedInput));
@@ -60,21 +60,21 @@ selectedData = [];
 rawData = [];
 colName = txt(1,2:end);
 colNewName = [];
+block = zeros(1,b);
 for i=1:b
-    block = [block, 0];
     for j=1:d
-      commodity = blockStruct(j,i);
-      if ~isnan(commodity)
-          colNewName = [colNewName colName(commodity)];
-          selectedData = [selectedData, preparedInput(:,commodity)];
-          rawData = [rawData, data(:,commodity)];
+      inputVariable = blockStruct(j,i);
+      if ~isnan(inputVariable)
+          colNewName = [colNewName colName(inputVariable)];
+          selectedData = [selectedData, preparedInput(:,inputVariable)];
+          rawData = [rawData, data(:,inputVariable)];
           block(i) = block(i)+1;
       end
     end
 end
 
 % Output prep
-filename= strcat(outputFile,datestr(now,'yyyymmdd-HHMM'),'.xlsx');
+filename= strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
 factors = length(block)+1;
 varNames = colNewName;
 dates = txt(2:end-1,1)';

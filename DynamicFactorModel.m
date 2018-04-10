@@ -1,28 +1,15 @@
-function [x,F_hat,iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% "A Quasi?Maximum Likelihood Approach for Large, Approximate Dynamic Factor Models," 
-% The Review of Economics and Statistics, MIT Press, vol. 94(4), pages 1014-1024, November 2012.
+function [x, F_hat, max_iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
+% "A Quasi-Maximum Likelihood Approach for Large, Approximate Dynamic Factor Models," 
 % Catherine Doz, Universite' Cergy-Pontoise
 % Domenico Giannone, Universite' Libre de Bruxelles, ECARES and CEPR
 % Lucrezia Reichlin, London Business School and CEPR 
 %
-%
 % Programs are also available at: http://homepages.ulb.ac.be/~dgiannon/
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% 
-% DynFA:             extracts the unobservable factors using three different methods 
+% DynFA:             extracts the unobservable factors using QML 
 %                         
 %       - QML:      Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
 %                    (Doz, Giannone and Reichlin, 2012) 
-%                         
-%       - TWO STEP: Principal components + Kalman filtering 
-%                   Doz, Catherine & Giannone, Domenico & Reichlin, Lucrezia, 2011.
-%                   "A two-step estimator for large approximate dynamic factor models based on Kalman filtering," 
-%                   Journal of Econometrics, Elsevier, vol. 164(1), pages 188-205, September.
-% 
-%       - PC:       principal components 
 %                         
 % INPUTS
 % X - matrix of observable variables
@@ -33,8 +20,6 @@ function [x,F_hat,iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, 
 %
 % OUTPUTS
 % F_hat -   factors from QML
-% F_pc  -   factors using principal components
-% F_kal -   factors using from two steps
 
 OPTS.disp = 0;
 [T,N] = size(X);
@@ -42,8 +27,7 @@ OPTS.disp = 0;
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
 
-
-% the number of static factors cannot be greater than dynamic
+% Number of dynamic factors must not exceed total number of factors
 if r < q
     error('q has to be less or equal to r')
 end
@@ -59,8 +43,7 @@ Q(1:r,1:r) = eye(r);
 
 OPTS.disp=0;
 
-% Create pseudo dataset, replacing NaN with 0, in order to make
-% the initialization good
+% Create pseudo dataset, replacing NaN with 0, in order to find PCs
 pseudo_x = x;
 pseudo_x(isnan(pseudo_x)) = 0;
 
@@ -133,93 +116,48 @@ y = x';
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
     
-    % E step : computes the expected sufficient statistics 
+    % E-STEP
+    % Compute the expected sufficient statistics 
     % First iteration uses initial values for A, C, Q, R, initx, initV 
     % obtained from the principal component analysis
-    [beta_t_AQ, gamma_t_C, delta_t_C, gamma1_t_AQ, gamma2_t_AQ, x1, V1, loglik_t,xsmooth] = ...
+    % 
+    % beta   = sum_t=1^T (f_t * f'_t-1)
+    % gamma  = sum_t=1^T (f_t * f'_t)
+    % delta  = sum_t=1^T (x_t * f'_t)
+    % gamma1 = sum_t=2^T (f_t-1 * f'_t-1)
+    % gamma2 = sum_t=2^T (f_t * f'_t)
+    % P1sum    variance of the initial state
+    % x1sum    expected value of the initial state
+    [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1sum, V1, loglik, ~] = ...
         Estep(y, A, C, Q, R, initx, initV, block);
-    
-    % Hand over the expected sufficient statistics from E-step
-    beta_AQ = beta_t_AQ;        % beta   = sum_t=1^T (f_t * f'_t-1)
-    gamma_C = gamma_t_C;        % gamma  = sum_t=1^T (f_t * f'_t)   
-    delta_C = delta_t_C;        % delta  = sum_t=1^T (x_t * f'_t)
-    gamma1_AQ = gamma1_t_AQ;    % gamma1 = sum_t=2^T (f_t-1 * f'_t-1)
-    gamma2_AQ = gamma2_t_AQ;    % gamma2 = sum_t=2^T (f_t * f'_t)
-    P1sum = V1 + x1*x1';        % P1sum    variance of the initial state
-    x1sum = x1;                 % x1sum    expected value of the initial state
-                                                                            
-    % Update the log likelihood                                                                           
-    loglik = loglik_t;
-    LL(iter) = loglik;
-    
-    %%% M step 
+    P1sum = V1 + x1sum*x1sum';
+                                              
+    % M-STEP 
     % Compute the parameters of the model as a function of the sufficient
     % statistics
-    
+    %
     % The parameters are found through maximum likelihood optimisation
     % In the EM algorithm we substitute the sufficient statistics 
     % calculated earlier.
-    
-    % C = (sum_t=1^T x_t*f'_t)* (sum_t=1^T f_t*f'_t)^-1 
-    prev_split = 1;
-    split = 1;
-    for i=1:length(block)
-        split = split + block(i);
-        C_temp = delta_C{i} * pinv(gamma_C{i});
-        C(prev_split:(split-1), 1) = C_temp(:,1);
-        C(prev_split:(split-1), 1+i) = C_temp(:,2);
-        prev_split = split;
-    end
-    
-    if p > 0
-    
-        % A = (sum_t=2^T f_t*f'_t-1)* (sum_2=1^T f_t-1*f'_t-1)^-1
-        Atemp_AQ = zeros(1, r);
-        for i=1:r
-            Atemp_AQ(i) = beta_AQ(i) / gamma1_AQ(i);
-            A(i,i) = Atemp_AQ(i);
-        end
-        
-        % Q = ( (sum_t=2^T f_t*f'_t) - A * (sum_2=1^T f_t-1*f'_t) )/(T-1)
-        for i=1:r
-            H = (gamma2_AQ(i)-Atemp_AQ(i)*beta_AQ(i)) / (T-1);
-            Q(i,i) = H;
-        end
-    end
-    
-    % R = ( sum_t=1^T (x_t*x'_t) - C * f_t*x'_t) )/T 
-    prev_split = 1;
-    split = 1;
-    Cdim = size(C);
-    delta = zeros(Cdim(1), Cdim(2));
-    for i=1:length(block)
-        split = split + block(i);
-        delta(prev_split:(split-1), 1) = delta_C{i}(:,1);
-        delta(prev_split:(split-1), 1+i) = delta_C{i}(:,2);
-        prev_split = split;
-    end
-    R = (x'*x - C*delta')/T;
-    
-    RR = diag(R); RR(RR<1e-7) = 1e-7; R = diag(RR); 
-      
-    R = diag(diag(R));                  % R diagonal
-    
+    [A, C, Q, R] = ...
+        Mstep(x, p, r, block, beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ);
+ 
+    % Update the log likelihood                                                                          
+    LL(iter) = loglik;
+    converged = em_converged(loglik, previous_loglik, thresh,1);
     if mod(iter, 100)==0
         fprintf('Iteration %d: %f\n', iter, loglik);
     end
     
+    % Set up for next iteration
+    previous_loglik = loglik;
     initx = x1sum;
     initV = (P1sum - initx*initx');
-    
-    converged = em_converged(loglik, previous_loglik, thresh,1);
-    
     iter =  iter + 1;
-    
-    previous_loglik = loglik;
 end
 
-[xitt,xittm,Ptt,Pttm,loglik_t]=KalmanFilter(initx,initV,x,A,C,R,Q);
-[xsmooth, Vsmooth, VVsmooth]=KalmanSmoother(A,xitt,xittm,Ptt,Pttm,C,R);
+[xitt,xittm,Ptt,Pttm,~]=KalmanFilter(initx,initV,x,A,C,R,Q);
+[xsmooth, ~, ~]=KalmanSmoother(A,xitt,xittm,Ptt,Pttm,C,R);
 
 F_hat =  xsmooth(1:r,:)';
 
