@@ -37,58 +37,31 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt] = xlsread(dataFile, dataSheet, 'A3:BC273');
+[data, txt]                = xlsread(dataFile, dataSheet, 'A3:BC273');
+dates = txt(2:end-1,1)';
+varNames = txt(1,2:end);
 
-preparedInput = data;
+[blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'A1:I53');
 
-preparedInput(preparedInput == 0) = NaN;
+[preparedData, nanMatrix, blockCount, selection] = ... 
+            PrepareData(data, deflate, logdiff, blockStructure);
 
-if deflate
-    preparedInput = deflateAdjust(preparedInput);
-end
-if logdiff
-    preparedInput = diff(log(preparedInput));
-    preparedInput(preparedInput == Inf | preparedInput == -Inf) = NaN;
-end
 
-[T,n] = size(preparedInput);
-
-[blockStruct, txtB] = xlsread(blockFile, blockSheet, 'A1:I53');
-[d,b]=size(blockStruct);
-block = [];
-selectedData = [];
-rawData = [];
-colName = txt(1,2:end);
-colNewName = [];
-block = zeros(1,b);
-for i=1:b
-    for j=1:d
-      inputVariable = blockStruct(j,i);
-      if ~isnan(inputVariable)
-          colNewName = [colNewName colName(inputVariable)];
-          selectedData = [selectedData, preparedInput(:,inputVariable)];
-          rawData = [rawData, data(:,inputVariable)];
-          block(i) = block(i)+1;
-      end
-    end
-end
+varNames = varNames(selection);
+rawData = data(:, selection);
 
 % Output prep
-filename = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
-factors = length(block)+1;
-varNames = colNewName;
-dates = txt(2:end-1,1)';
-factorNames = ['Global', txtB];
-% for i=1:length(block)
-%     factorNames(i+1) = strcat('B', string(i));
-% end
+outputFile = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
+r = length(blockCount)+1;
+
+factorNames = ['Global', blockNames];
 breakdown = ['Global', 'Block', 'Idio', 'Total'];
 
 %***********************
 % Running the algorithm
 %***********************
-[normData,F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(selectedData, factors, factors, 1, maxIterations, threshold, block);
+[normData, F_hat, iter, C, A, Q] = ...
+    DynamicFactorModel(preparedData, r, r, 1, maxIterations, threshold, blockCount);
 
 disp('Finished in ' + iter + ' iterations');
 
@@ -100,47 +73,47 @@ disp('Finished in ' + iter + ' iterations');
 %***********************
 % Write to file
 %***********************
-xlswrite(filename,F_hat,'Factors','B2');
-xlswrite(filename,dates','Factors','A2');
-xlswrite(filename,factorNames,'Factors','B1');
+xlswrite(outputFile,F_hat,'Factors','B2');
+xlswrite(outputFile,dates','Factors','A2');
+xlswrite(outputFile,factorNames,'Factors','B1');
 
-xlswrite(filename,C,'Loadings','B2');
-xlswrite(filename,varNames','Loadings','A2');
-xlswrite(filename,factorNames,'Loadings','B1');
+xlswrite(outputFile,C,'Loadings','B2');
+xlswrite(outputFile,varNames','Loadings','A2');
+xlswrite(outputFile,factorNames,'Loadings','B1');
 
-xlswrite(filename,var,'VarDecomp', 'B2');
-xlswrite(filename,varNames','VarDecomp','A2');
-xlswrite(filename,breakdown,'VarDecomp','B1');
+xlswrite(outputFile,var,'VarDecomp', 'B2');
+xlswrite(outputFile,varNames','VarDecomp','A2');
+xlswrite(outputFile,breakdown,'VarDecomp','B1');
 
-xlswrite(filename,A,'A','B2');
-xlswrite(filename,factorNames','A','A2');
-xlswrite(filename,factorNames,'A','B1');
+xlswrite(outputFile,A,'A','B2');
+xlswrite(outputFile,factorNames','A','A2');
+xlswrite(outputFile,factorNames,'A','B1');
 
-xlswrite(filename,Q,'Q','B2');
-xlswrite(filename,factorNames,'Q','B1');
-xlswrite(filename,factorNames','Q','A2');
+xlswrite(outputFile,Q,'Q','B2');
+xlswrite(outputFile,factorNames,'Q','B1');
+xlswrite(outputFile,factorNames','Q','A2');
 
 if writeRaw
-    xlswrite(filename,rawData,'RawData','B2');
-    xlswrite(filename,varNames,'RawData','B1');
-    xlswrite(filename,dates','RawData','A2');
+    xlswrite(outputFile,rawData,'RawData','B2');
+    xlswrite(outputFile,varNames,'RawData','B1');
+    xlswrite(outputFile,dates','RawData','A2');
 end
 
 if writeInput
-    xlswrite(filename,selectedData,'Input','B2');
-    xlswrite(filename,varNames,'Input','B1');
-    xlswrite(filename,dates','Input','A2');
+    xlswrite(outputFile,preparedData,'Input','B2');
+    xlswrite(outputFile,varNames,'Input','B1');
+    xlswrite(outputFile,dates','Input','A2');
 end
 
 if writeNormalized
-    xlswrite(filename,normData,'NormInput','B2');
-    xlswrite(filename,varNames,'NormInput','B1');
-    xlswrite(filename,dates','NormInput','A2');
+    xlswrite(outputFile,normData,'NormInput','B2');
+    xlswrite(outputFile,varNames,'NormInput','B1');
+    xlswrite(outputFile,dates','NormInput','A2');
 end
 
 if writeIMFIndex
     title=['IMF PALLFNF', ''];
-    xlswrite(filename,preparedInput(:,54),'Index','B2');
-    xlswrite(filename,title,'Index','B1');
-    xlswrite(filename,dates','Index','A2');
+    xlswrite(outputFile,preparedData(:,54),'Index','B2');
+    xlswrite(outputFile,title,'Index','B1');
+    xlswrite(outputFile,dates','Index','A2');
 end
