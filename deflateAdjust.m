@@ -1,5 +1,5 @@
 function [deflated] = deflateAdjust(data)
-inflationFile = "InflationData.xlsx";
+inflationFile = 'InflationData.xlsx';
 [globalInflation, ~] = xlsread(inflationFile, 1);
 
 % Deflate data

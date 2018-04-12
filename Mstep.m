@@ -1,12 +1,12 @@
 function [A, C, Q, R] = Mstep(x, p, r, block, beta_AQ, gamma_C, delta_C, ...
                               gamma1_AQ, gamma2_AQ)
                           
-
-[T, ~] = size(x);
+[T, n] = size(x);
 % Update C (loadings matrix)
 % C = (sum_t=1^T x_t*f'_t)* (sum_t=1^T f_t*f'_t)^-1 
 prev_split = 1;
 split = 1;
+C = zeros(n, r);
 for i=1:length(block)
     split = split + block(i);
     C_temp = delta_C{i} * pinv(gamma_C{i});
@@ -16,6 +16,10 @@ for i=1:length(block)
 end
 
 % If we use dynamic factors, we update the prediction equation parameters
+% NB! The A matrix is only square if the factors are all AR(1) processes
+% This must be updated otherwise!
+A = zeros(r,r);
+Q = zeros(r,r);
 if p > 0
     % Update A (Factor VAR coefficients)
     % A = (sum_t=2^T f_t*f'_t-1)* (sum_2=1^T f_t-1*f'_t-1)^-1

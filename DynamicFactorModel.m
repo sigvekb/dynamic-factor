@@ -1,4 +1,4 @@
-function [x, F_hat, max_iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
+function [x, F_hat, iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
 % "A Quasi-Maximum Likelihood Approach for Large, Approximate Dynamic Factor Models," 
 % Catherine Doz, Universite' Cergy-Pontoise
 % Domenico Giannone, Universite' Libre de Bruxelles, ECARES and CEPR
