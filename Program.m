@@ -37,31 +37,20 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt]                = xlsread(dataFile, dataSheet, 'A3:BC273');
-dates = txt(2:end-1,1)';
-varNames = txt(1,2:end);
-
+[data, txt]                  = xlsread(dataFile, dataSheet, 'A3:BC273');
 [blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'A1:I53');
 
 [preparedData, nanMatrix, blockCount, selection] = ... 
             PrepareData(data, deflate, logdiff, blockStructure);
 
-
-varNames = varNames(selection);
-rawData = data(:, selection);
-
-% Output prep
-outputFile = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
 r = length(blockCount)+1;
-
-factorNames = ['Global', blockNames];
-breakdown = ['Global', 'Block', 'Idio', 'Total'];
 
 %***********************
 % Running the algorithm
 %***********************
 [normData, F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(preparedData, r, r, 1, maxIterations, threshold, blockCount);
+    DynamicFactorModel(preparedData, r, r, 1, maxIterations, ...
+                       threshold, blockCount, nanMatrix);
 
 disp('Finished in ' + iter + ' iterations');
 
@@ -73,6 +62,16 @@ disp('Finished in ' + iter + ' iterations');
 %***********************
 % Write to file
 %***********************
+% Output prep
+dates = txt(2:end-1,1)';
+varNames = txt(1,2:end);
+varNames = varNames(selection);
+rawData = data(:, selection);
+
+outputFile = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
+factorNames = ['Global', blockNames];
+breakdown = ['Global', 'Block', 'Idio', 'Total'];
+
 xlswrite(outputFile,F_hat,'Factors','B2');
 xlswrite(outputFile,dates','Factors','A2');
 xlswrite(outputFile,factorNames,'Factors','B1');

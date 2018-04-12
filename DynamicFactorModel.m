@@ -1,4 +1,5 @@
-function [x, F_hat, iter, C, A, Q] = DynamicFactorModel(X,q,r,p,max_iter, thresh, block)
+function [x, F_hat, iter, C, A, Q] = ...
+    DynamicFactorModel(X,q,r,p,max_iter, thresh, block, W)
 % "A Quasi-Maximum Likelihood Approach for Large, Approximate Dynamic Factor Models," 
 % Catherine Doz, Universite' Cergy-Pontoise
 % Domenico Giannone, Universite' Libre de Bruxelles, ECARES and CEPR
@@ -86,7 +87,7 @@ initV = reshape(pinv(eye((r*nlag+1))^2-kron(A,A))*Q(:),r*(nlag+1),r*(nlag+1));
 
 C = [v zeros(N,r*(nlag))];
 
-% Restric C matrix to block structure
+% Restrict C matrix to block structure
 keep = 0;
 for elem=1:(length(block)-1)
     keep = keep + block(elem);
@@ -103,6 +104,8 @@ for elem=1:(length(block)-1)
         end
     end
 end
+
+% [H_linearRes, kVec] = RestrictLoadingMatrix(n=1, block);
 
 % Initialize the estimation and define ueful quantities
 previous_loglik = -inf;
@@ -128,7 +131,7 @@ while (iter < max_iter) && ~converged
     % gamma2 = sum_t=2^T (f_t * f'_t)
     % P1sum    variance of the initial state
     % x1sum    expected value of the initial state
-    [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1sum, V1, loglik, ~] = ...
+    [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1sum, V1, loglik, ~, delta, gamma] = ...
         Estep(y, A, C, Q, R, initx, initV, block);
     P1sum = V1 + x1sum*x1sum';
                                               
@@ -140,7 +143,7 @@ while (iter < max_iter) && ~converged
     % In the EM algorithm we substitute the sufficient statistics 
     % calculated earlier.
     [A, C, Q, R] = ...
-        Mstep(x, p, r, block, beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ);
+        Mstep(x, p, r, block, beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, delta, gamma);
  
     % Update the log likelihood                                                                          
     LL(iter) = loglik;
