@@ -23,7 +23,7 @@ function [x, F_hat, iter, C, A, Q] = ...
 % F_hat -   factors from QML
 
 OPTS.disp = 0;
-[~,N] = size(X);
+[~,n] = size(X);
 
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
@@ -85,7 +85,7 @@ end
 initx = Z(1,:)';                                                                                
 initV = reshape(pinv(eye((r*nlag+1))^2-kron(A,A))*Q(:),r*(nlag+1),r*(nlag+1));
 
-C = [v zeros(N,r*(nlag))];
+C = [v zeros(n,r*(nlag))];
 
 % Restrict C matrix to block structure
 keep = 0;
@@ -105,7 +105,8 @@ for elem=1:(length(block)-1)
     end
 end
 
-% [H_linearRes, kVec] = RestrictLoadingMatrix(n=1, block);
+f=1; % Number of global factors
+[H_lambda, kappa] = RestrictLoadingMatrix(n,r,f,block);
 
 % Initialize the estimation and define ueful quantities
 previous_loglik = -inf;
@@ -132,7 +133,7 @@ while (iter < max_iter) && ~converged
     % P1sum    variance of the initial state
     % x1sum    expected value of the initial state
     [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1sum, V1, loglik, ~, delta, gamma] = ...
-        Estep(y, A, C, Q, R, initx, initV, block);
+        Estep(y, A, C, Q, R, initx, initV, block, W);
     P1sum = V1 + x1sum*x1sum';
                                               
     % M-STEP 

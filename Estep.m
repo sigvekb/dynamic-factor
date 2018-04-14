@@ -1,5 +1,5 @@
-function [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, loglik_t, xsmooth, delta, gamma] = ...
-    Estep(y, A, C, Q, R, initx, initV, block)
+function [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, loglik_t, xsmooth, delta, gammaCmiss] = ...
+    Estep(y, A, C, Q, R, initx, initV, block, W)
 
 % This function computes the (expected) sufficient statistics for a single Kalman filter sequence.
 %
@@ -99,11 +99,18 @@ beta_AQ = zeros(1, r);
 %-------------------------------------------------------------------------
 % Values without consideration of block-structure
 delta = zeros(n, r);
-gamma = zeros(r, r);
+gamma = zeros(r,r);
+gammaCmiss = zeros(n*r, n*r);
 beta = zeros(r, r);
+y_temp = y;
+y_temp(isnan(y_temp)) = 0;
 for t=1:T
-    delta = delta + y(:,t)*xsmooth(:,t)'; % D
-    gamma = gamma + xsmooth(:,t)*xsmooth(:,t)' + Vsmooth(:,:,t); % C
+    deltaChange = W(:,:,t)*y_temp(:,t)*xsmooth(:,t)';
+    delta = delta + deltaChange; % D
+    gammaChange = xsmooth(:,t)*xsmooth(:,t)' + Vsmooth(:,:,t);
+    missingValueKron = kron(gammaChange, W(:,:,t));
+    gammaCmiss = gammaCmiss + missingValueKron; % C
+    gamma = gamma + gammaChange;
     if t>1
         beta = beta + xsmooth(:,t)*xsmooth(:,t-1)' + VVsmooth(:,:,t); % 
     end

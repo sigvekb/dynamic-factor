@@ -2,6 +2,15 @@ function [A, C, Q, R] = Mstep(x, p, r, block, beta_AQ, gamma_C, delta_C, ...
                               gamma1_AQ, gamma2_AQ, delta, gamma)
                           
 [T, n] = size(x);
+
+% Find unrestricted C w/ missing values
+Cvec = gamma\delta(:);
+
+Cres = Cvec;
+
+% Find block-restricted C w/ missing values
+% Need H and k matrices
+
 % Update C (loadings matrix)
 % C = (sum_t=1^T x_t*f'_t)* (sum_t=1^T f_t*f'_t)^-1 
 % prev_split = 1;

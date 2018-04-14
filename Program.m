@@ -15,15 +15,15 @@
 %               Should be between 1e-4 and 1e-7
 
 dir = '/Users/sigvekb/Master/dynamic-factor';
-dataFile = 'Dataset missing_obs.xlsx';
+dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
-blockFile = 'Blocks.xlsx';
-blockSheet = 'B2';
+blockFile = 'Block_WBC.xlsx';
+blockSheet = 'B1';
 outputFile = 'DFM_Output';
 maxIterations = 1000;
 threshold = 1e-5;
 
-deflate = true;
+deflate = false;
 logdiff = true;
 
 writeRaw = true;
@@ -37,7 +37,7 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt]                  = xlsread(dataFile, dataSheet, 'A3:BC273');
+[data, txt]                  = xlsread(dataFile, dataSheet, 'A3:BE460');
 [blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'A1:I53');
 
 [preparedData, nanMatrix, blockCount, selection] = ... 
