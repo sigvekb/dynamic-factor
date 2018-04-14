@@ -50,7 +50,6 @@ for j=1:T
     end
     
     % Update predictions after observation
-    check = K * innovation;
     xitt(:,j) = xittm(:,j) + K * innovation;
     Ptt(:,:,j) = Pttm(:,:,j) - K * C*Pttm(:,:,j);
     
@@ -62,9 +61,9 @@ for j=1:T
     % lik(j)=((2*pi)^(-N/2))*(abs((det(C*Pttm(:,:,j)*C'+R)))^(-.5))*...
     %    exp(-1/2*(y(:,j)-C*xittm(:,j))'*L*(-1/2*(y(:,j)-C*xittm(:,j))));
     
-    
-    e = y(:,j) - C*xittm(:,j); % error (innovation)
-    e(isnan(e)) = 0;
+    y_temp = y;
+    y_temp(isnan(y_temp)) = 0;
+    e = y_temp(:,j) - C*xittm(:,j); % error (innovation)
     ss = length(A);
     d = size(e,1);
     S = C*Pttm(:,:,j)*C' + R;
@@ -75,7 +74,6 @@ for j=1:T
     denom = (2*pi)^(d/2)*sqrt(abs(detS));
     mahal = sum((e'/S) * e, 2);
     logl(j) = -0.5*mahal - log(denom);
-    
 end
 
 loglik=sum(logl);

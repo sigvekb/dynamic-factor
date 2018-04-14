@@ -45,15 +45,15 @@ Q(1:r,1:r) = eye(r);
 OPTS.disp=0;
 
 % Create pseudo dataset, replacing NaN with 0, in order to find PCs
-pseudo_x = x;
-pseudo_x(isnan(pseudo_x)) = 0;
+x_noNaN = x;
+x_noNaN(isnan(x_noNaN)) = normrnd(0,1);
 
 % Extract the first r eigenvectors and eigenvalues from cov(x)
-[ v, ~ ] = eigs(cov(pseudo_x),r,'lm',OPTS);
+[ v, ~ ] = eigs(cov(x_noNaN),r,'lm',OPTS);
 
-chi = pseudo_x*(v*v');                       % Common component
+chi = x_noNaN*(v*v');                       % Common component
 
-F = pseudo_x*v;
+F = x_noNaN*v;
 
 if p > 0    
     z = F;
@@ -106,7 +106,7 @@ for elem=1:(length(block)-1)
 end
 
 f=1; % Number of global factors
-[H_lambda, kappa] = RestrictLoadingMatrix(n,r,f,block);
+[H, K] = RestrictLoadingMatrix(n,r,f,block);
 
 % Initialize the estimation and define ueful quantities
 previous_loglik = -inf;
@@ -120,6 +120,9 @@ y = x';
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
     
+    [A, C, Q, R, x1, V1, loglik, xsmooth] = ...
+        EMiteration(y, A, C, Q, R, initx, initV, H, K, W);
+    P1sum = V1 + x1*x1';
     % E-STEP
     % Compute the expected sufficient statistics 
     % First iteration uses initial values for A, C, Q, R, initx, initV 
@@ -132,9 +135,8 @@ while (iter < max_iter) && ~converged
     % gamma2 = sum_t=2^T (f_t * f'_t)
     % P1sum    variance of the initial state
     % x1sum    expected value of the initial state
-    [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1sum, V1, loglik, ~, delta, gamma] = ...
-        Estep(y, A, C, Q, R, initx, initV, block, W);
-    P1sum = V1 + x1sum*x1sum';
+%     [beta_AQ, delta_C, gamma1_AQ, gamma2_AQ, x1sum, V1, loglik, ~, delta, gammaKronW, gamma] = ...
+%         Estep(y, A, C, Q, R, initx, initV, block, W);
                                               
     % M-STEP 
     % Compute the parameters of the model as a function of the sufficient
@@ -143,11 +145,15 @@ while (iter < max_iter) && ~converged
     % The parameters are found through maximum likelihood optimisation
     % In the EM algorithm we substitute the sufficient statistics 
     % calculated earlier.
-    [A, C, Q, R] = ...
-        Mstep(x, p, r, block, beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, delta, gamma);
+%     [A, C, Q, R] = ...
+%         Mstep(x, p, r, block, ...
+%               beta_AQ, delta_C, gamma1_AQ, gamma2_AQ, ...
+%               delta, gamma, gammaKronW, R, H, K);
  
     % Update the log likelihood                                                                          
     LL(iter) = loglik;
+    
+    %Check for convergence
     converged = em_converged(loglik, previous_loglik, thresh,1);
     if mod(iter, 100)==0
         fprintf('Iteration %d: %f\n', iter, loglik);
@@ -155,7 +161,7 @@ while (iter < max_iter) && ~converged
     
     % Set up for next iteration
     previous_loglik = loglik;
-    initx = x1sum;
+    initx = x1;
     initV = (P1sum - initx*initx');
     iter =  iter + 1;
 end

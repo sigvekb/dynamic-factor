@@ -1,13 +1,18 @@
-function [A, C, Q, R] = Mstep(x, p, r, block, beta_AQ, gamma_C, delta_C, ...
-                              gamma1_AQ, gamma2_AQ, delta, gamma)
+function [A, C, Q, R] = Mstep(x, p, r, block, beta_AQ, ...
+                              gamma1_AQ, gamma2_AQ, delta, gamma, ...
+                              gammaKronW, R, H, K)
                           
 [T, n] = size(x);
 
 % Find unrestricted C w/ missing values
-Cvec = gamma\delta(:);
+Cvec = gammaKronW\delta(:);
+gammaKronR = kron(gamma, R);
 
-Cres = Cvec;
+Cres = Cvec + ...
+       ((gammaKronR*H') / (H*gammaKronR*H')) * (K - H*Cvec);
 
+C = reshape(Cres, [n,r]);
+C(abs(C)<1e-10) = 0;
 % Find block-restricted C w/ missing values
 % Need H and k matrices
 

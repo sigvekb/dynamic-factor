@@ -37,7 +37,7 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt]                  = xlsread(dataFile, dataSheet, 'A3:BE460');
+[data, txt]                  = xlsread(dataFile, dataSheet, 'A1:BE460');
 [blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'A1:I53');
 
 [preparedData, nanMatrix, blockCount, selection] = ... 
@@ -52,7 +52,7 @@ r = length(blockCount)+1;
     DynamicFactorModel(preparedData, r, r, 1, maxIterations, ...
                        threshold, blockCount, nanMatrix);
 
-disp('Finished in ' + iter + ' iterations');
+fprintf('Finished in %d iterations', iter-1);
 
 %***********************
 % Testing
@@ -70,7 +70,7 @@ rawData = data(:, selection);
 
 outputFile = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
 factorNames = ['Global', blockNames];
-breakdown = ['Global', 'Block', 'Idio', 'Total'];
+breakdown = ["Global", "Block", "Idio", "Total"];
 
 xlswrite(outputFile,F_hat,'Factors','B2');
 xlswrite(outputFile,dates','Factors','A2');

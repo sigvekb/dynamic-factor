@@ -1,4 +1,5 @@
-function [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, loglik_t, xsmooth, delta, gammaCmiss] = ...
+function [beta_AQ, delta_C, gamma1_AQ, gamma2_AQ, ...
+          x1, V1, loglik_t, xsmooth, delta, gammaCmiss, gamma] = ...
     Estep(y, A, C, Q, R, initx, initV, block, W)
 
 % This function computes the (expected) sufficient statistics for a single Kalman filter sequence.
@@ -38,30 +39,6 @@ function [beta_AQ, gamma_C, delta_C, gamma1_AQ, gamma2_AQ, x1, V1, loglik_t, xsm
 % Create all versions of xsmooth, y, Vsmooth, VVsmooth needed
 % Global + block
 [r, ~] = size(xsmooth);
-xSmooth_C = cell(1, length(block));
-for i=1:length(block)
-    m = [xsmooth(1,:); xsmooth(1+i,:)];
-    xSmooth_C{i} = m;
-end
-
-y_C = cell(1, length(block));
-prev_split = 1;
-split = 1;
-for i=1:length(block)
-    split = split + block(i);
-    y_C{i} = y(prev_split:(split-1),:);
-    prev_split = split;
-end
-
-Vsmooth_C = cell(1, length(block));
-for i=1:length(block)
-    V = zeros(2,2,T);
-    V(1,1,:) = Vsmooth(1,1,:);
-    V(2,2,:) = Vsmooth(1+i,1+i,:);
-    V(1,2,:) = Vsmooth(1,1+i,:);
-    V(2,1,:) = Vsmooth(1,1+i,:);
-    Vsmooth_C{i} = V;
-end
 
 % All factors
 xSmooth_AQ = cell(1, r);
@@ -83,22 +60,29 @@ for i=1:r
     VVsmooth_AQ{i} = VV;
 end
 
-delta_C = cell(1, r-1);
-gamma_C = cell(1, r-1);
-
-for i=1:(length(block))
-    delta = zeros(block(i), 2);
-    gamma = zeros(2, 2);
-    delta_C{i} = delta;
-    gamma_C{i} = gamma;
-end
-
 gamma_AQ = zeros(1, r);
 beta_AQ = zeros(1, r);
 
+for t=1:T
+    % AQ
+    for i=1:r
+        gamma_AQ(i) = gamma_AQ(i) + xSmooth_AQ{i}(:,t)*xSmooth_AQ{i}(:,t)' + Vsmooth_AQ{i}(:,:,t);
+        if t>1
+            beta_AQ(i) = beta_AQ(i) + xSmooth_AQ{i}(:,t)*xSmooth_AQ{i}(:,t-1)' + VVsmooth_AQ{i}(:,:,t); 
+        end
+    end
+    
+end
+gamma1_AQ = zeros(1, r);
+gamma2_AQ = zeros(1, r);
+for i=1:r
+    gamma1_AQ(i) = gamma_AQ(i) - xSmooth_AQ{i}(:,T)*xSmooth_AQ{i}(:,T)' - Vsmooth_AQ{i}(:,:,T);
+    gamma2_AQ(i) = gamma_AQ(i) - xSmooth_AQ{i}(:,1)*xSmooth_AQ{i}(:,1)' - Vsmooth_AQ{i}(:,:,1);
+end
+
 %-------------------------------------------------------------------------
 % Values without consideration of block-structure
-delta = zeros(n, r);
+delta = zeros(n,r);
 gamma = zeros(r,r);
 gammaCmiss = zeros(n*r, n*r);
 beta = zeros(r, r);
@@ -118,29 +102,6 @@ end
 gamma1 = gamma - xsmooth(:,T)*xsmooth(:,T)' - Vsmooth(:,:,T); % 
 gamma2 = gamma - xsmooth(:,1)*xsmooth(:,1)' - Vsmooth(:,:,1);
 %-------------------------------------------------------------------------
-
-for t=1:T
-    % C
-    for i=1:length(block)
-        delta_C{i} = delta_C{i} + y_C{i}(:,t)*xSmooth_C{i}(:,t)';
-        gamma_C{i} = gamma_C{i} + xSmooth_C{i}(:,t)*xSmooth_C{i}(:,t)' + Vsmooth_C{i}(:,:,t);
-    end
-    
-    % AQ
-    for i=1:r
-        gamma_AQ(i) = gamma_AQ(i) + xSmooth_AQ{i}(:,t)*xSmooth_AQ{i}(:,t)' + Vsmooth_AQ{i}(:,:,t);
-        if t>1
-            beta_AQ(i) = beta_AQ(i) + xSmooth_AQ{i}(:,t)*xSmooth_AQ{i}(:,t-1)' + VVsmooth_AQ{i}(:,:,t); 
-        end
-    end
-    
-end
-gamma1_AQ = zeros(1, r);
-gamma2_AQ = zeros(1, r);
-for i=1:r
-    gamma1_AQ(i) = gamma_AQ(i) - xSmooth_AQ{i}(:,T)*xSmooth_AQ{i}(:,T)' - Vsmooth_AQ{i}(:,:,T);
-    gamma2_AQ(i) = gamma_AQ(i) - xSmooth_AQ{i}(:,1)*xSmooth_AQ{i}(:,1)' - Vsmooth_AQ{i}(:,:,1);
-end
 
 x1 = xsmooth(:,1);
 V1 = Vsmooth(:,:,1);
