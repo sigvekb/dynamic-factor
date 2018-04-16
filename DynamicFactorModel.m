@@ -37,13 +37,15 @@ Q(1:r,1:r) = eye(r);
 OPTS.disp=0;
 
 % Create pseudo dataset, replacing NaN with 0, in order to find PCs
+rng('default');
 x_noNaN = x;
-x_noNaN(isnan(x_noNaN)) = 0;
+x_noNaN(isnan(x_noNaN)) = randn();
 
 % Extract the first r eigenvectors and eigenvalues from cov(x)
+
 [ v, ~ ] = eigs(cov(x_noNaN),r,'lm',OPTS);
 
-chi = x_noNaN*(v*v');                       % Common component
+chi = x_noNaN*(v*v'); % Common component
 
 F = x_noNaN*v;
 
@@ -114,34 +116,7 @@ while (iter < max_iter) && ~converged
     
     [A, C, Q, R, x1, V1, loglik, xsmooth] = ...
         EMiteration(y, A, C, Q, R, initx, initV, H, K, W);
-    P1sum = V1 + x1*x1';
-    % E-STEP
-    % Compute the expected sufficient statistics 
-    % First iteration uses initial values for A, C, Q, R, initx, initV 
-    % obtained from the principal component analysis
-    % 
-    % beta   = sum_t=1^T (f_t * f'_t-1)
-    % gamma  = sum_t=1^T (f_t * f'_t)
-    % delta  = sum_t=1^T (x_t * f'_t)
-    % gamma1 = sum_t=2^T (f_t-1 * f'_t-1)
-    % gamma2 = sum_t=2^T (f_t * f'_t)
-    % P1sum    variance of the initial state
-    % x1sum    expected value of the initial state
-%     [beta_AQ, delta_C, gamma1_AQ, gamma2_AQ, x1sum, V1, loglik, ~, delta, gammaKronW, gamma] = ...
-%         Estep(y, A, C, Q, R, initx, initV, block, W);
-                                              
-    % M-STEP 
-    % Compute the parameters of the model as a function of the sufficient
-    % statistics
-    %
-    % The parameters are found through maximum likelihood optimisation
-    % In the EM algorithm we substitute the sufficient statistics 
-    % calculated earlier.
-%     [A, C, Q, R] = ...
-%         Mstep(x, p, r, block, ...
-%               beta_AQ, delta_C, gamma1_AQ, gamma2_AQ, ...
-%               delta, gamma, gammaKronW, R, H, K);
- 
+    
     % Update the log likelihood                                                                          
     LL(iter) = loglik;
     
@@ -154,7 +129,7 @@ while (iter < max_iter) && ~converged
     % Set up for next iteration
     previous_loglik = loglik;
     initx = x1;
-    initV = (P1sum - initx*initx');
+    initV = V1;
     iter =  iter + 1;
 end
 
@@ -182,7 +157,7 @@ decrease = 0;
 
 if check_increased
     if loglik - previous_loglik < -1e-3 % allow for a little imprecision
-             fprintf(1, '******likelihood decreased from %6.4f to %6.4f!\n', previous_loglik, loglik);
+             fprintf(1, '! log(L) decreased from %6.2f to %6.2f!\n', previous_loglik, loglik);
         decrease = 1;
     end
 end

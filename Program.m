@@ -14,13 +14,13 @@
 % threshold - The threshold value for convergence of the EM algorithm.
 %               Should be between 1e-4 and 1e-7
 
-dir = '/Users/sigvekb/Master/dynamic-factor';
+dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
 dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
 blockSheet = 'B1';
 outputFile = 'DFM_Output';
-maxIterations = 300;
+maxIterations = 600;
 threshold = 1e-5;
 
 deflate = false;
