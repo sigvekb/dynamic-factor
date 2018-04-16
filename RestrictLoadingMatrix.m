@@ -1,10 +1,8 @@
 function [H, k] = RestrictLoadingMatrix(n, r, f, block)
 
 k = zeros(n*(r-(f+1)),1);
-k(1,1) = 1;
 
 H = zeros(n*(r-(f+1)), n*r);
-H(1,1) = 1;
 b = length(block);
 sumB = 0;
 for i=1:b

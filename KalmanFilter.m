@@ -39,15 +39,13 @@ for j=1:T
     % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
     % equations below
     L = C * Pttm(:,:,j) * C' + R;
-    K = ( Pttm(:,:,j) * C' ) / L;
+    K = (Pttm(:,:,j) * C') / L;
     innovation = (y(:,j)-C*xittm(:,j));
     
     % Set K=0 for missing values
     [row, ~] = find(isnan(innovation));
     innovation(isnan(innovation)) = 0;
-    for elem=1:length(row)
-        K(:,row(elem)) = 0;
-    end
+    K(:,row) = 0;
     
     % Update predictions after observation
     xitt(:,j) = xittm(:,j) + K * innovation;

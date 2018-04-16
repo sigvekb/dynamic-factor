@@ -1,14 +1,11 @@
-function [varDecomp] = DynFactorTest(normData, factors, loadings)
-[T,n] = size(normData);
-[~,r] = size(loadings);
+function [varDecomp] = VarianceDecomposition(normData, factors, loadings)
+[n,r] = size(loadings);
 varDecomp = zeros(n,4);
 
-i_fact = zeros(T,n);
-i_fact = i_fact + normData;
+i_fact = normData;
 
 all = cell(1, r);
-all{1} = factors(:,1)*loadings(:,1)';
-for f=2:r
+for f=1:r
     all{f} = factors(:,f)*loadings(:,f)';
 end
 
@@ -24,6 +21,6 @@ for v=1:n
             end
         end
     end
-    varDecomp(v,3) = var(i_fact(:,v));
+    varDecomp(v,3) = nanvar(i_fact(:,v));
     varDecomp(v,4) = sum(varDecomp(v,1:3));
 end

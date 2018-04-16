@@ -20,13 +20,13 @@ dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
 blockSheet = 'B1';
 outputFile = 'DFM_Output';
-maxIterations = 1000;
+maxIterations = 300;
 threshold = 1e-5;
 
 deflate = false;
 logdiff = true;
 
-writeRaw = true;
+writeRaw = false;
 writeInput = false;
 writeNormalized = false;
 writeIMFIndex = false;
@@ -55,9 +55,9 @@ r = length(blockCount)+1;
 fprintf('Finished in %d iterations', iter-1);
 
 %***********************
-% Testing
+% Variance Decomposition
 %***********************
-[var] = DynFactorTest(normData, F_hat, C);
+[varDecomp] = VarianceDecomposition(normData, F_hat, C);
 
 %***********************
 % Write to file
@@ -70,7 +70,7 @@ rawData = data(:, selection);
 
 outputFile = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
 factorNames = ['Global', blockNames];
-breakdown = ["Global", "Block", "Idio", "Total"];
+breakdown = ['Global', 'Block', 'Idio', 'Total'];
 
 xlswrite(outputFile,F_hat,'Factors','B2');
 xlswrite(outputFile,dates','Factors','A2');
@@ -80,7 +80,7 @@ xlswrite(outputFile,C,'Loadings','B2');
 xlswrite(outputFile,varNames','Loadings','A2');
 xlswrite(outputFile,factorNames,'Loadings','B1');
 
-xlswrite(outputFile,var,'VarDecomp', 'B2');
+xlswrite(outputFile,varDecomp,'VarDecomp', 'B2');
 xlswrite(outputFile,varNames','VarDecomp','A2');
 xlswrite(outputFile,breakdown,'VarDecomp','B1');
 

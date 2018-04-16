@@ -1,16 +1,8 @@
 function [x, F_hat, iter, C, A, Q] = ...
     DynamicFactorModel(X,q,r,p,max_iter, thresh, block, W)
-% "A Quasi-Maximum Likelihood Approach for Large, Approximate Dynamic Factor Models," 
-% Catherine Doz, Universite' Cergy-Pontoise
-% Domenico Giannone, Universite' Libre de Bruxelles, ECARES and CEPR
-% Lucrezia Reichlin, London Business School and CEPR 
-%
-% Programs are also available at: http://homepages.ulb.ac.be/~dgiannon/
-%
-% DynFA:             extracts the unobservable factors using QML 
-%                         
-%       - QML:      Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
-%                    (Doz, Giannone and Reichlin, 2012) 
+% Extracts the unobservable factors using QML 
+% Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
+% (Doz, Giannone and Reichlin, 2012) 
 %                         
 % INPUTS
 % X - matrix of observable variables
@@ -46,7 +38,7 @@ OPTS.disp=0;
 
 % Create pseudo dataset, replacing NaN with 0, in order to find PCs
 x_noNaN = x;
-x_noNaN(isnan(x_noNaN)) = normrnd(0,1);
+x_noNaN(isnan(x_noNaN)) = 0;
 
 % Extract the first r eigenvectors and eigenvalues from cov(x)
 [ v, ~ ] = eigs(cov(x_noNaN),r,'lm',OPTS);
