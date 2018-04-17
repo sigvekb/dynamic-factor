@@ -33,13 +33,17 @@ Ptt=zeros(r,r,T);
 
 logl = zeros(T,1);
 Kgain = zeros(r,n,T);
+mahalSum = 0;
+denomSum = 0;
 % Forward pass over observed data
 for j=1:T
     
     % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
     % equations below
     L = C * Pttm(:,:,j) * C' + R;
-    K = (Pttm(:,:,j) * C') / L;
+    L_step = inv(chol(L)); 
+    L_inv = L_step * L_step';
+    K = (Pttm(:,:,j) * C') * L_inv; % / L;
     Kgain(:,:,j) = K;
     innovation = (y(:,j)-C*xittm(:,j));
     
@@ -73,7 +77,9 @@ for j=1:T
     detS = prod(diag(R))*det(eye(ss)+Pttm(:,:,j)*GG);
     denom = (2*pi)^(d/2)*sqrt(abs(detS));
     mahal = sum((e'/S) * e, 2);
+    mahalSum = mahalSum + mahal;
+    denomSum = denomSum + log(denom);
     logl(j) = -0.5*mahal - log(denom);
 end
-
+fprintf("Mahal: %3.0f, Denom: %3.0f", -0.5*mahalSum, -denomSum);
 loglik=sum(logl);

@@ -12,28 +12,16 @@ V1 = Vsmooth(:,:,1);
 % Create all versions of xsmooth, y, Vsmooth, VVsmooth needed
 [r, ~] = size(xsmooth);
 
-% All factors
 xSmooth_AQ = cell(1, r);
-
-for i=1:r
-    m = xsmooth(i,:);
-    xSmooth_AQ{i} = m;
-end
-
 Vsmooth_AQ = cell(1, r);
-for i=1:r
-    V = Vsmooth(i,i,:);
-    Vsmooth_AQ{i} = V;
-end
-
 VVsmooth_AQ = cell(1, r);
-for i=1:r
-    VV = VVsmooth(i,i,:);
-    VVsmooth_AQ{i} = VV;
-end
-
 gamma_AQ = zeros(1, r);
 beta_AQ = zeros(1, r);
+for i=1:r
+    xSmooth_AQ{i} = xsmooth(i,:);
+    Vsmooth_AQ{i} = Vsmooth(i,i,:);
+    VVsmooth_AQ{i} = VVsmooth(i,i,:);
+end
 
 for t=1:T
     % AQ
@@ -43,7 +31,6 @@ for t=1:T
             beta_AQ(i) = beta_AQ(i) + xSmooth_AQ{i}(:,t)*xSmooth_AQ{i}(:,t-1)' + VVsmooth_AQ{i}(:,:,t); 
         end
     end
-    
 end
 gamma1_AQ = zeros(1, r);
 gamma2_AQ = zeros(1, r);
