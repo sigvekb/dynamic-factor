@@ -3,8 +3,8 @@ function [A, C, Q, R, x1, V1, loglik_t, xsmooth] = ...
 
 [n, T] = size(y);
 
-[xitt,xittm,Ptt,Pttm,loglik_t]=KalmanFilter(initx,initV,y',A,C,R,Q);
-[xsmooth, Vsmooth, VVsmooth]=KalmanSmoother(A,xitt,xittm,Ptt,Pttm,C,R);
+[xitt,xittm,Ptt,Pttm,loglik_t, Kgain]=KalmanFilter(initx,initV,y',A,C,R,Q);
+[xsmooth, Vsmooth, VVsmooth]=KalmanSmoother(A,xitt,xittm,Kgain,Ptt,Pttm,C);
 
 x1 = xsmooth(:,1);
 V1 = Vsmooth(:,:,1);

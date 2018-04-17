@@ -77,7 +77,9 @@ end
 
 % Initial factor values, initial state covariance
 initx = Z(1,:)';                                                                                
-initV = reshape(pinv(eye((r*nlag+1))^2-kron(A,A))*Q(:),r*(nlag+1),r*(nlag+1));
+%initV = sreshape(pinv(eye((r*nlag+1))^2-kron(A,A))*Q(:),r*(nlag+1),r*(nlag+1));
+initV = cov(Z);
+% initV = abs(initV); %Testing
 
 C = [v zeros(n,r*(nlag))];
 
@@ -114,6 +116,9 @@ y = x';
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
     
+    if iter == 32
+        a=1;
+    end
     [A, C, Q, R, x1, V1, loglik, xsmooth] = ...
         EMiteration(y, A, C, Q, R, initx, initV, H, K, W);
     
@@ -122,9 +127,7 @@ while (iter < max_iter) && ~converged
     
     %Check for convergence
     converged = em_converged(loglik, previous_loglik, thresh,1);
-    if mod(iter, 100)==0
-        fprintf('Iteration %d: %f\n', iter, loglik);
-    end
+    fprintf('Iteration %d: %6.2f\n', iter, loglik);
     
     % Set up for next iteration
     previous_loglik = loglik;
@@ -132,9 +135,6 @@ while (iter < max_iter) && ~converged
     initV = V1;
     iter =  iter + 1;
 end
-
-[xitt,xittm,Ptt,Pttm,~]=KalmanFilter(initx,initV,x,A,C,R,Q);
-[xsmooth, ~, ~]=KalmanSmoother(A,xitt,xittm,Ptt,Pttm,C,R);
 
 F_hat =  xsmooth(1:r,:)';
 
@@ -157,7 +157,7 @@ decrease = 0;
 
 if check_increased
     if loglik - previous_loglik < -1e-3 % allow for a little imprecision
-             fprintf(1, '! log(L) decreased from %6.2f to %6.2f!\n', previous_loglik, loglik);
+             fprintf(1, '!! Decrease', previous_loglik, loglik);
         decrease = 1;
     end
 end

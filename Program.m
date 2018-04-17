@@ -21,7 +21,7 @@ blockFile = 'Block_WBC.xlsx';
 blockSheet = 'B1';
 outputFile = 'DFM_Output';
 maxIterations = 1000;
-threshold = 1e-6;
+threshold = 1e-7;
 
 deflate = false;
 logdiff = true;
@@ -31,6 +31,7 @@ writeInput = false;
 writeNormalized = false;
 writeIMFIndex = false;
 
+%digits(100);
 %*********************
 % Preparation
 %*********************

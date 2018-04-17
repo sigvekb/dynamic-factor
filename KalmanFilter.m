@@ -1,4 +1,4 @@
-function [xitt,xittm,Ptt,Pttm,loglik]=KalmanFilter(initx,initV,x,A,C,R,Q)
+function [xitt,xittm,Ptt,Pttm,loglik, Kgain]=KalmanFilter(initx,initV,x,A,C,R,Q)
 % INPUTS
 % x(:,t) - the observation at time t
 % A - the system matrix
@@ -18,7 +18,7 @@ function [xitt,xittm,Ptt,Pttm,loglik]=KalmanFilter(initx,initV,x,A,C,R,Q)
 % Covariance matrix after observation update
 % loglik - value of the loglikelihood
 
-[T,~]=size(x);
+[T,n]=size(x);
 r=size(A,1);
 
 y=x';
@@ -32,7 +32,7 @@ Pttm(:,:,1)=initV;
 Ptt=zeros(r,r,T);
 
 logl = zeros(T,1);
-
+Kgain = zeros(r,n,T);
 % Forward pass over observed data
 for j=1:T
     
@@ -40,6 +40,7 @@ for j=1:T
     % equations below
     L = C * Pttm(:,:,j) * C' + R;
     K = (Pttm(:,:,j) * C') / L;
+    Kgain(:,:,j) = K;
     innovation = (y(:,j)-C*xittm(:,j));
     
     % Set K=0 for missing values
@@ -49,11 +50,13 @@ for j=1:T
     
     % Update predictions after observation
     xitt(:,j) = xittm(:,j) + K * innovation;
-    Ptt(:,:,j) = Pttm(:,:,j) - K * C*Pttm(:,:,j);
+    %Ptt(:,:,j) = Pttm(:,:,j) - K * C * Pttm(:,:,j); Unstable
+    Ir = eye(r);
+    Ptt(:,:,j) = (Ir - K*C) * Pttm(:,:,j) * (Ir - K*C)' + K * R * K'; % Based on Max Welling explanations
     
     % Get next transition predictions, predicting one-step-ahead
     xittm(:,j+1)= A * xitt(:,j);
-    Pttm(:,:,j+1)= A * Ptt (:,:,j) * A' + Q;
+    Pttm(:,:,j+1)= A * Ptt(:,:,j) * A' + Q;
     
     % Likelihood calculation not used
     % lik(j)=((2*pi)^(-N/2))*(abs((det(C*Pttm(:,:,j)*C'+R)))^(-.5))*...

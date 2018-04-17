@@ -1,4 +1,4 @@
-function [xitT,PtT,PtTm]=KalmanSmoother(A,xitt,xittm,Ptt,Pttm,C,R)
+function [xitT,PtT,PtTm]=KalmanSmoother(A,xitt,xittm,K,Ptt,Pttm,C)
 % INPUTS
 % y(:,t) - the observation at time t
 % A - the system matrix
@@ -22,14 +22,6 @@ J=zeros(r,r,T);
 
 for i=1:T-1
     J(:,:,i)= (Ptt(:,:,i) * A') / Pttm(:,:,i+1);
-end
-
-[var, factors] = size(C);
-L = zeros(var, var, T);
-K = zeros(factors, var, T);
-for i=1:T
-    L(:,:,i)= C * Pttm(:,:,i) * C' + R;
-    K(:,:,i)= (Pttm(:,:,i) * C') / L(:,:,i);
 end
 
 xitT=[zeros(r,T-1)  xitt(:,T)];
