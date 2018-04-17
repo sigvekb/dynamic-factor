@@ -20,8 +20,8 @@ dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
 blockSheet = 'B1';
 outputFile = 'DFM_Output';
-maxIterations = 600;
-threshold = 1e-7;
+maxIterations = 1000;
+threshold = 1e-6;
 
 deflate = false;
 logdiff = true;

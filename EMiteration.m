@@ -66,6 +66,7 @@ for t=1:T
     
     gammaChange = xsmooth(:,t)*xsmooth(:,t)' + Vsmooth(:,:,t);
     gammaKronW = gammaKronW + kron(gammaChange, W(:,:,t));
+    
     gamma = gamma + gammaChange;
     
     if t>1
@@ -80,8 +81,8 @@ gamma2 = gamma - xsmooth(:,1)*xsmooth(:,1)' - Vsmooth(:,:,1);
 %-------------------------------------------------------------------------                        
 % Update C (See Banbura(2010))
 % C is block-restricted and handles missing values
-Cvec = gammaKronW\delta(:);
-Cres = Cvec + ((gammaKronR*H') / (H*gammaKronR*H')) * (K - H*Cvec);
+Cvec = gammaKronW \ delta(:);
+Cres = Cvec + ((gammaKronR * H') / (H * gammaKronR * H')) * (K - H * Cvec);
 C = reshape(Cres, [n,r]);
 C(abs(C)<1e-10) = 0; % Remove almost-zero entries..
 

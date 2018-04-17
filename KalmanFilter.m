@@ -39,10 +39,6 @@ for j=1:T
     % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
     % equations below
     L = C * Pttm(:,:,j) * C' + R;
-    Lstep = C*Pttm(:,:,j);
-    Lstep2 = Lstep*C';
-    Linv = inv(L);
-    K_init = (Pttm(:,:,j) * C');
     K = (Pttm(:,:,j) * C') / L;
     innovation = (y(:,j)-C*xittm(:,j));
     
