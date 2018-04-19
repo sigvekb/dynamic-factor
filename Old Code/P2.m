@@ -13,13 +13,13 @@
 % maxIterations - Maximum number of iterations in EM algorithm
 % lags - Number of lags, (for now restricted to be 1)
 
-dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor\Old Code';
+dir = 'C:\Users\sigvekb\Master\dynamic-factor\Old Code';
 dataFile = 'Dataset.xlsx';
 dataSheet = 'Data';
 blockFile = 'Blocks.xlsx';
 blockSheet = 'B2';
 outputFile = 'BlockSens';
-maxIterations = 4000;
+maxIterations = 200;
 inflate = false;
 threshold = -1;
 
@@ -65,11 +65,11 @@ filename= strcat(outputFile,datestr(now,'yyyymmdd-HHMM'),'.xlsx');
 factors = length(block)+1;
 varNames = colNewName;
 dates = txt(2:end-1,1)';
-factorNames = ["Global", txtB];
+factorNames = ['Global', txtB];
 % for i=1:length(block)
-%     factorNames(i+1) = strcat("B", string(i));
+%     factorNames(i+1) = strcat('B', string(i));
 % end
-breakdown = ["Global", "Block", "Idio", "Total"];
+breakdown = ['Global', 'Block', 'Idio', 'Total'];
 
 %***********************
 % Running the algorithm
@@ -85,46 +85,46 @@ breakdown = ["Global", "Block", "Idio", "Total"];
 %***********************
 % Write to file
 %***********************
-xlswrite(filename,F_hat,"Factors",'B2');
-xlswrite(filename,dates',"Factors",'A2');
-xlswrite(filename,factorNames,"Factors",'B1');
+xlswrite(filename,F_hat,'Factors','B2');
+xlswrite(filename,dates','Factors','A2');
+xlswrite(filename,factorNames,'Factors','B1');
 
-xlswrite(filename,C,"Loadings",'B2');
-xlswrite(filename,varNames',"Loadings",'A2');
-xlswrite(filename,factorNames,"Loadings",'B1');
+xlswrite(filename,C,'Loadings','B2');
+xlswrite(filename,varNames','Loadings','A2');
+xlswrite(filename,factorNames,'Loadings','B1');
 
-xlswrite(filename,var,"VarDecomp", 'B2');
-xlswrite(filename,varNames',"VarDecomp",'A2');
-xlswrite(filename,breakdown,"VarDecomp",'B1');
+xlswrite(filename,var,'VarDecomp', 'B2');
+xlswrite(filename,varNames','VarDecomp','A2');
+xlswrite(filename,breakdown,'VarDecomp','B1');
 
-xlswrite(filename,A,"A",'B2');
-xlswrite(filename,factorNames',"A",'A2');
-xlswrite(filename,factorNames,"A",'B1');
+xlswrite(filename,A,'A','B2');
+xlswrite(filename,factorNames','A','A2');
+xlswrite(filename,factorNames,'A','B1');
 
-xlswrite(filename,Q,"Q",'B2');
-xlswrite(filename,factorNames,"Q",'B1');
-xlswrite(filename,factorNames',"Q",'A2');
+xlswrite(filename,Q,'Q','B2');
+xlswrite(filename,factorNames,'Q','B1');
+xlswrite(filename,factorNames','Q','A2');
 
 if writeRaw
-    xlswrite(filename,rawData,"RawData",'B2');
-    xlswrite(filename,varNames,"RawData",'B1');
-    xlswrite(filename,dates',"RawData",'A2');
+    xlswrite(filename,rawData,'RawData','B2');
+    xlswrite(filename,varNames,'RawData','B1');
+    xlswrite(filename,dates','RawData','A2');
 end
 
 if writeInput
-    xlswrite(filename,selectedData,"Input",'B2');
-    xlswrite(filename,varNames,"Input",'B1');
-    xlswrite(filename,dates',"Input",'A2');
+    xlswrite(filename,selectedData,'Input','B2');
+    xlswrite(filename,varNames,'Input','B1');
+    xlswrite(filename,dates','Input','A2');
 end
 if writeNormalized
-    xlswrite(filename,normData,"NormInput",'B2');
-    xlswrite(filename,varNames,"NormInput",'B1');
-    xlswrite(filename,dates',"NormInput",'A2');
+    xlswrite(filename,normData,'NormInput','B2');
+    xlswrite(filename,varNames,'NormInput','B1');
+    xlswrite(filename,dates','NormInput','A2');
 end
 
 if writeIMFIndex
-    title=["IMF PALLFNF", ""];
-    xlswrite(filename,preparedData(:,54),"Index",'B2');
-    xlswrite(filename,title,"Index",'B1');
-    xlswrite(filename,dates',"Index",'A2');
+    title=['IMF PALLFNF', ''];
+    xlswrite(filename,preparedData(:,54),'Index','B2');
+    xlswrite(filename,title,'Index','B1');
+    xlswrite(filename,dates','Index','A2');
 end
