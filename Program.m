@@ -16,16 +16,16 @@
 
 %dir = 'C:\Users\sigvekb\Master\dynamic-factor';
 dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
-% dataFile = 'WorldBankCommodities.xlsx';
-% dataSheet = 'Data';
-% blockFile = 'Block_WBC.xlsx';
-% blockSheet = 'B1';
-dataFile = 'Dataset.xlsx';
+dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
-blockFile = 'Blocks.xlsx';
-blockSheet = 'B2';
+blockFile = 'Block_WBC.xlsx';
+blockSheet = 'B1';
+% dataFile = 'Dataset.xlsx';
+% dataSheet = 'Data';
+% blockFile = 'Blocks.xlsx';
+% blockSheet = 'B2';
 outputFile = 'DFM_Output';
-maxIterations = 1000;
+maxIterations = 200;
 threshold = 1e-7;
 
 deflate = false;
@@ -36,7 +36,7 @@ writeInput = false;
 writeNormalized = false;
 writeIMFIndex = false;
 
-digits(100);
+%digits(100);
 %*********************
 % Preparation
 %*********************

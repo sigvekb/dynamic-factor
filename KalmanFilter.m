@@ -54,7 +54,7 @@ for j=1:T
     
     % Update predictions after observation
     xitt(:,j) = xittm(:,j) + K * innovation;
-    %Ptt(:,:,j) = Pttm(:,:,j) - K * C * Pttm(:,:,j); Unstable
+    Ptttest(:,:,j) = Pttm(:,:,j) - K * C * Pttm(:,:,j);
     Ir = eye(r);
     Ptt(:,:,j) = (Ir - K*C) * Pttm(:,:,j) * (Ir - K*C)' + K * R * K'; % Based on Max Welling explanations
     

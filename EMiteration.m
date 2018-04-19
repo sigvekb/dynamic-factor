@@ -60,7 +60,7 @@ for t=1:T
         beta = beta + xsmooth(:,t)*xsmooth(:,t-1)' + VVsmooth(:,:,t); % 
     end
 end
-gammaKronR = kron(gamma, R);
+gammaKronR = kron(inv(gamma), R);
 gamma1 = gamma - xsmooth(:,T)*xsmooth(:,T)' - Vsmooth(:,:,T); % 
 gamma2 = gamma - xsmooth(:,1)*xsmooth(:,1)' - Vsmooth(:,:,1);
 
