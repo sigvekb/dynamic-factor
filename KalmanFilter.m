@@ -54,7 +54,6 @@ for j=1:T
     
     % Update predictions after observation
     xitt(:,j) = xittm(:,j) + K * innovation;
-    Ptttest(:,:,j) = Pttm(:,:,j) - K * C * Pttm(:,:,j);
     Ir = eye(r);
     Ptt(:,:,j) = (Ir - K*C) * Pttm(:,:,j) * (Ir - K*C)' + K * R * K'; % Based on Max Welling explanations
     
@@ -81,5 +80,4 @@ for j=1:T
     denomSum = denomSum + log(denom);
     logl(j) = -0.5*mahal - log(denom);
 end
-fprintf("Mahal: %3.0f, Denom: %3.0f", -0.5*mahalSum, -denomSum);
 loglik=sum(logl);

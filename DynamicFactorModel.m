@@ -134,6 +134,10 @@ while (iter < max_iter) && ~converged
     initx = x1;
     initV = V1;
     iter =  iter + 1;
+    
+    if iter == 61
+        a=1;
+    end
 end
 
 F_hat =  xsmooth(1:r,:)';

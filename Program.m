@@ -14,8 +14,8 @@
 % threshold - The threshold value for convergence of the EM algorithm.
 %               Should be between 1e-4 and 1e-7
 
-%dir = 'C:\Users\sigvekb\Master\dynamic-factor';
-dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
+dir = 'C:\Users\sigvekb\Master\dynamic-factor';
+%dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
 dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
@@ -25,8 +25,8 @@ blockSheet = 'B1';
 % blockFile = 'Blocks.xlsx';
 % blockSheet = 'B2';
 outputFile = 'DFM_Output';
-maxIterations = 200;
-threshold = 1e-7;
+maxIterations = 400;
+threshold = 1e-8;
 
 deflate = false;
 logdiff = true;
@@ -43,7 +43,7 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt]                  = xlsread(dataFile, dataSheet, 'A3:BE460');
+[data, txt]                  = xlsread(dataFile, dataSheet, 'A1:BE460');
 [blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'A1:I53');
 
 [preparedData, nanMatrix, blockCount, selection] = ... 

@@ -60,14 +60,15 @@ for t=1:T
         beta = beta + xsmooth(:,t)*xsmooth(:,t-1)' + VVsmooth(:,:,t); % 
     end
 end
-gammaKronR = kron(inv(gamma), R);
+
 gamma1 = gamma - xsmooth(:,T)*xsmooth(:,T)' - Vsmooth(:,:,T); % 
 gamma2 = gamma - xsmooth(:,1)*xsmooth(:,1)' - Vsmooth(:,:,1);
 
 % Start M-step
 %-------------------------------------------------------------------------                        
-% Update C (See Banbura(2010))
+% Update C (See Banbura(2010) and Bork(2008))
 % C is block-restricted and handles missing values
+gammaKronR = kron(inv(gamma), R);
 Cvec = gammaKronW \ delta(:);
 Cres = Cvec + ((gammaKronR * H') / (H * gammaKronR * H')) * (K - H * Cvec);
 C = reshape(Cres, [n,r]);
