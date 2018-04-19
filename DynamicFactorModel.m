@@ -127,7 +127,7 @@ while (iter < max_iter) && ~converged
     
     %Check for convergence
     converged = em_converged(loglik, previous_loglik, thresh,1);
-    fprintf('Iteration %d: %6.2f\n', iter, loglik);
+    fprintf('Iteration %3d: %6.2f\n', iter, loglik);
     
     % Set up for next iteration
     previous_loglik = loglik;
@@ -135,7 +135,7 @@ while (iter < max_iter) && ~converged
     initV = V1;
     iter =  iter + 1;
     
-    if iter == 61
+    if iter == 57
         a=1;
     end
 end

@@ -26,7 +26,7 @@ blockSheet = 'B1';
 % blockSheet = 'B2';
 outputFile = 'DFM_Output';
 maxIterations = 400;
-threshold = 1e-8;
+threshold = 1e-6;
 
 deflate = false;
 logdiff = true;
