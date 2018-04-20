@@ -1,5 +1,5 @@
 function [x, F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(X,q,r,p,max_iter, thresh, block, W)
+    DynamicFactorModel(X, q, r, p, max_iter, thresh, blockCount, blockStruct, W)
 % Extracts the unobservable factors using QML 
 % Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
 % (Doz, Giannone and Reichlin, 2012) 
@@ -16,25 +16,21 @@ function [x, F_hat, iter, C, A, Q] = ...
 
 OPTS.disp = 0;
 [~,n] = size(X);
-
-demean = bsxfun(@minus, X, nanmean(X));
-x = bsxfun(@rdivide, demean, nanstd(X));
+nlag = p-1;
 
 % Number of dynamic factors must not exceed total number of factors
 if r < q
     error('q has to be less or equal to r')
 end
 
-nlag = p-1;
+demean = bsxfun(@minus, X, nanmean(X));
+x = bsxfun(@rdivide, demean, nanstd(X));
 
 A_temp = zeros(r,r*(nlag + 1))';
 I = eye(r*(nlag+1),r*(nlag + 1));
 A = [A_temp';I(1:end-r,1:end)];
-
 Q = zeros((nlag+1)*r,(nlag+1)*r);
 Q(1:r,1:r) = eye(r);
-
-OPTS.disp=0;
 
 % Create pseudo dataset, replacing NaN with 0, in order to find PCs
 rng('default');
@@ -42,11 +38,8 @@ x_noNaN = x;
 x_noNaN(isnan(x_noNaN)) = randn();
 
 % Extract the first r eigenvectors and eigenvalues from cov(x)
-
 [ v, ~ ] = eigs(cov(x_noNaN),r,'lm',OPTS);
-
 chi = x_noNaN*(v*v'); % Common component
-
 F = x_noNaN*v;
 
 if p > 0    
@@ -64,61 +57,35 @@ if p > 0
     Q(1:r,1:r) = H;                 % variance of the VAR shock when s=0
 end
 
-Q = diag(diag(Q));
-A = diag(diag(A));
-
-R = diag(diag(nancov(x-chi)));         % R diagonal
-
+% Initial factor values, initial state covariance
 z = F;
 Z = [];
 for kk = 0:nlag
     Z = [Z z(nlag-kk+1:end-kk,:)];  % stacked regressors (lagged SPC)
 end
-
-% Initial factor values, initial state covariance
 initx = Z(1,:)';                                                                                
-%initV = sreshape(pinv(eye((r*nlag+1))^2-kron(A,A))*Q(:),r*(nlag+1),r*(nlag+1));
 initV = cov(Z);
-% initV = abs(initV); %Testing
 
+A = diag(diag(A));
 C = [v zeros(n,r*(nlag))];
-
-% Restrict C matrix to block structure
-keep = 0;
-for elem=1:(length(block)-1)
-    keep = keep + block(elem);
-    dimV = size(v);
-    for col=(elem+1):dimV(2)
-        if col == elem+1
-            for row = (keep+1):dimV(1)
-                C(row, col) = 0;
-            end
-        else
-            for row = 1:keep
-                C(row, col) = 0;
-            end
-        end
-    end
-end
+Q = diag(diag(Q));
+R = diag(diag(nancov(x-chi)));
 
 f=1; % Number of global factors
-[H, K] = RestrictLoadingMatrix(n,r,f,block);
+[H, K, Cinit] = RestrictLoadingMatrix(n,r,f,blockStruct,C);
 
-% Initialize the estimation and define ueful quantities
+C = Cinit;
+
+% Initialize the estimation and define uesful quantities
 previous_loglik = -inf;
 iter = 1;
 LL = zeros(1, max_iter);
 converged = 0;
-
 y = x';
 
 % Estimation with the EM algorithm
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
-    
-    if iter == 32
-        a=1;
-    end
     [A, C, Q, R, x1, V1, loglik, xsmooth] = ...
         EMiteration(y, A, C, Q, R, initx, initV, H, K, W);
     
@@ -134,10 +101,6 @@ while (iter < max_iter) && ~converged
     initx = x1;
     initV = V1;
     iter =  iter + 1;
-    
-    if iter == 57
-        a=1;
-    end
 end
 
 F_hat =  xsmooth(1:r,:)';

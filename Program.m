@@ -19,7 +19,7 @@ dir = 'C:\Users\sigvekb\Master\dynamic-factor';
 dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
-blockSheet = 'B1';
+blockSheet = 'Flexi';
 % dataFile = 'Dataset.xlsx';
 % dataSheet = 'Data';
 % blockFile = 'Blocks.xlsx';
@@ -43,10 +43,10 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt]                  = xlsread(dataFile, dataSheet, 'A1:BE460');
-[blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'A1:I53');
+[data, txt]                  = xlsread(dataFile, dataSheet, 'A1:ZZ1000');
+[blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'E1:AZ100');
 
-[preparedData, nanMatrix, blockCount, selection] = ... 
+[preparedData, nanMatrix, newBlockStruct, blockCount, selection] = ... 
             PrepareData(data, deflate, logdiff, blockStructure);
 
 r = length(blockCount)+1;
@@ -56,7 +56,7 @@ r = length(blockCount)+1;
 %***********************
 [normData, F_hat, iter, C, A, Q] = ...
     DynamicFactorModel(preparedData, r, r, 1, maxIterations, ...
-                       threshold, blockCount, nanMatrix);
+                       threshold, blockCount, newBlockStruct, nanMatrix);
 
 fprintf('Finished in %d iterations', iter-1);
 

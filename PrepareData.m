@@ -1,5 +1,5 @@
-function [preparedData, nanMatrix, blockCount, selection] = ...
-            PrepareData(data, deflate, logdiff, blockStructure)
+function [preparedData, nanMatrix, newBlockStruct, blockCount, varsFound] = ...
+            PrepareData(data, deflate, logdiff, blockStruct)
 
 preparedData = data;
 preparedData(preparedData == 0) = NaN;
@@ -13,16 +13,29 @@ if logdiff
     preparedData(preparedData == Inf | preparedData == -Inf) = NaN;
 end
 
-[~,b]=size(blockStructure);
+% Define block structure in terms of new ordering
+[d,b]=size(blockStruct);
+newBlockStruct = zeros(d,b);
+varsFound = [];
+
 blockCount = zeros(1,b);
-selection = [];
 for i=1:b
-    block = blockStructure(~isnan(blockStructure(:,i)),i);
-    blockCount(i) = length(block);
-    selection = [selection block'];
+    block = blockStruct(~isnan(blockStruct(:,i)),i);
+    bLen = length(block);
+    for j=1:bLen
+        var = blockStruct(j,i);
+        found = find(varsFound==var);
+        if isempty(found)
+            newBlockStruct(j,i) = length(varsFound)+1;
+            varsFound = [varsFound var];
+        else
+            newBlockStruct(j,i) = found;
+        end
+    end
+    blockCount(i) = bLen;
 end
 
-preparedData = preparedData(:, selection);
+preparedData = preparedData(:, varsFound);
 
 prepInputMask = ~isnan(preparedData);
 [T,n] = size(preparedData);

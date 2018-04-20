@@ -1,23 +1,24 @@
-function [H, k] = RestrictLoadingMatrix(n, r, f, block)
+function [H, k, Cinit] = RestrictLoadingMatrix(n, r, f, blockStruct, C)
+Cinit = C;
 
-k = zeros(n*(r-(f+1)),1);
+H = zeros(n*r,n*r);
+[~,blocks] = size(blockStruct);
 
-H = zeros(n*(r-(f+1)), n*r);
-b = length(block);
-sumB = 0;
-for i=1:b
-    len = block(i);
+for i=1:blocks
+    block = blockStruct(:,i);
+    fRow = n*i;
+    fCol = n*i; 
     
-    
-    cols = (1:n) + (f+i-1)*n;
-    zerocols = (1:len)+sumB;
-    cols(zerocols) = [];
-    rows = (1:(n-len)) + n*(i-1)-sumB;
-    sumB = sum(block(1:i));
-    
-    for j = 1:length(rows)
-        H(rows(j), cols(j)) = 1;
+    % Add restrictions
+    for v=1:n    
+        if ~ismember(v, block)
+            H(fRow+v,fCol+v) = 1;
+            Cinit(v,i+f) = 0;
+        end
     end
 end
+
+H( ~any(H,2), : ) = [];  % Remove all-zero rows
+k = zeros(size(H,1),1);
 
 
