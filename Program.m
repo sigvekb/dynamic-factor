@@ -19,16 +19,12 @@ dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
 dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
-blockSheet = 'Flexi';
-% dataFile = 'Dataset.xlsx';
-% dataSheet = 'Data';
-% blockFile = 'Blocks.xlsx';
-% blockSheet = 'B2';
+blockSheet = 'Block1';
 outputFile = 'DFM_Output';
 
-globalFactors = 1;
+globalFactors = 2;
 maxIterations = 400;
-threshold = 1e-5;
+threshold = 1e-6;
 deflate = false;
 logdiff = true;
 selfLag = true; % Restrict factors to only load on own lags
@@ -36,7 +32,6 @@ selfLag = true; % Restrict factors to only load on own lags
 writeRaw = false;
 writeInput = false;
 writeNormalized = false;
-writeIMFIndex = false;
 
 %digits(100);
 %*********************
@@ -45,10 +40,11 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt]             = xlsread(dataFile, dataSheet, 'A1:FZ1000');
+[data, txt]           = xlsread(dataFile, dataSheet, 'A1:FZ1000');
 [blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
 
 lags = blockData(1,:);
+lags = [ones(1,globalFactors-1)*lags(1) lags];
 blockStructure = blockData(2:end,2:end);
 
 [preparedData, nanMatrix, newBlockStruct, blockCount, selection] = ... 
@@ -68,7 +64,7 @@ fprintf('Finished in %d iterations', iter-1);
 %***********************
 % Variance Decomposition
 %***********************
-[varDecomp] = VarianceDecomposition(normData, F_hat, C);
+[varDecomp] = VarianceDecomposition(normData, F_hat, C, globalFactors);
 
 %***********************
 % Write to file
@@ -78,11 +74,12 @@ dates = txt(2:end-1,1)';
 varNames = txt(1,2:end);
 varNames = varNames(selection);
 rawData = data(:, selection);
-blockNames = blockTxt(1,2:end);
+factorNames = blockTxt(1,2:end);
+factorNames = [repelem(("Global"),globalFactors) factorNames];
+maxlags = max(lags);
 
 outputFile = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
-factorNames = ['Global', blockNames];
-breakdown = ['Global', 'Block', 'Idio', 'Total'];
+breakdown = [factorNames 'Global' 'Block' 'Idio'];
 
 xlswrite(outputFile,F_hat,'Factors','B2');
 xlswrite(outputFile,dates','Factors','A2');
@@ -96,6 +93,7 @@ xlswrite(outputFile,varDecomp,'VarDecomp', 'B2');
 xlswrite(outputFile,varNames','VarDecomp','A2');
 xlswrite(outputFile,breakdown,'VarDecomp','B1');
 
+AfactorNames = repmat(factorNames, 1, maxlags);
 xlswrite(outputFile,A,'A','B2');
 xlswrite(outputFile,factorNames','A','A2');
 xlswrite(outputFile,factorNames,'A','B1');
@@ -120,11 +118,4 @@ if writeNormalized
     xlswrite(outputFile,normData,'NormInput','B2');
     xlswrite(outputFile,varNames,'NormInput','B1');
     xlswrite(outputFile,dates','NormInput','A2');
-end
-
-if writeIMFIndex
-    title=['IMF PALLFNF', ''];
-    xlswrite(outputFile,preparedData(:,54),'Index','B2');
-    xlswrite(outputFile,title,'Index','B1');
-    xlswrite(outputFile,dates','Index','A2');
 end

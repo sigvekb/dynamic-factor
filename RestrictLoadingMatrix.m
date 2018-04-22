@@ -1,4 +1,4 @@
-function [H, k, Cinit] = RestrictLoadingMatrix(n, r, f, blockStruct, C)
+function [H, k, Cinit] = RestrictLoadingMatrix(n, r, g, blockStruct, C)
 Cinit = C;
 
 H = zeros(n*r,n*r);
@@ -6,14 +6,14 @@ H = zeros(n*r,n*r);
 
 for i=1:blocks
     block = blockStruct(:,i);
-    fRow = n*i;
-    fCol = n*i; 
+    fRow = n*(i-1+g);
+    fCol = n*(i-1+g); 
     
     % Add restrictions
     for v=1:n    
         if ~ismember(v, block)
             H(fRow+v,fCol+v) = 1;
-            Cinit(v,i+f) = 0;
+            Cinit(v,i+g) = 0;
         end
     end
 end

@@ -1,6 +1,6 @@
 function [G, rho, Ainit] = RestrictLagMatrix(A,lags,selfLag)
 Ainit = A;
-r = size(lags, 2);
+r = size(Ainit, 1);
 maxlag = max(lags);
 rlag = r*maxlag;
 
