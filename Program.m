@@ -14,8 +14,8 @@
 % threshold - The threshold value for convergence of the EM algorithm.
 %               Should be between 1e-4 and 1e-7
 
-dir = 'C:\Users\sigvekb\Master\dynamic-factor';
-%dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
+% dir = 'C:\Users\sigvekb\Master\dynamic-factor';
+dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
 dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
@@ -26,7 +26,7 @@ blockSheet = 'Flexi';
 % blockSheet = 'B2';
 outputFile = 'DFM_Output';
 maxIterations = 400;
-threshold = 1e-6;
+threshold = 1e-5;
 
 deflate = false;
 logdiff = true;
@@ -43,8 +43,11 @@ writeIMFIndex = false;
 cd(dir);
 
 % Data preparation
-[data, txt]                  = xlsread(dataFile, dataSheet, 'A1:ZZ1000');
-[blockStructure, blockNames] = xlsread(blockFile, blockSheet, 'E1:AZ100');
+[data, txt]             = xlsread(dataFile, dataSheet, 'A1:FZ1000');
+[blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
+
+lags = blockData(1,:);
+blockStructure = blockData(2:end,2:end);
 
 [preparedData, nanMatrix, newBlockStruct, blockCount, selection] = ... 
             PrepareData(data, deflate, logdiff, blockStructure);
@@ -55,8 +58,8 @@ r = length(blockCount)+1;
 % Running the algorithm
 %***********************
 [normData, F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(preparedData, r, r, 1, maxIterations, ...
-                       threshold, blockCount, newBlockStruct, nanMatrix);
+    DynamicFactorModel(preparedData, r, r, maxIterations, threshold, ...
+                       newBlockStruct, nanMatrix, lags);
 
 fprintf('Finished in %d iterations', iter-1);
 
@@ -73,6 +76,7 @@ dates = txt(2:end-1,1)';
 varNames = txt(1,2:end);
 varNames = varNames(selection);
 rawData = data(:, selection);
+blockNames = blockTxt(1,2:end);
 
 outputFile = strcat(outputFile,datestr(now,'mmdd-HHMM'),'.xlsx');
 factorNames = ['Global', blockNames];

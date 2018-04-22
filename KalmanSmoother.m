@@ -15,20 +15,23 @@ function [xitT,PtT,PtTm]=KalmanSmoother(A,xitt,xittm,K,Ptt,Pttm,C)
 % PtTm = Cov[X(:,t+1),X(:,t) | y(:,1:T)]
 
 [T]=size(xitt,2);
-r=size(A,1);
+rlag=size(A,1);
 Pttm=Pttm(:,:,1:end-1);
 xittm=xittm(:,1:end-1);
-J=zeros(r,r,T);
+J=zeros(rlag,rlag,T);
 
 for i=1:T-1
-    J(:,:,i)= (Ptt(:,:,i) * A') / Pttm(:,:,i+1);
+    Pchol = inv(chol(Pttm(:,:,i+1)));
+    Pinv = Pchol * Pchol';
+    %J(:,:,i)= (Ptt(:,:,i) * A') / Pttm(:,:,i+1);
+    J(:,:,i)= (Ptt(:,:,i) * A') * Pinv;
 end
 
-xitT=[zeros(r,T-1)  xitt(:,T)];
-PtT=zeros(r,r,T);
-PtTm=zeros(r,r,T);
+xitT=[zeros(rlag,T-1)  xitt(:,T)];
+PtT=zeros(rlag,rlag,T);
+PtTm=zeros(rlag,rlag,T);
 PtT(:,:,T)=Ptt(:,:,T);
-PtTm(:,:,T)=(eye(r)-K(:,:,T)*C)*A*Ptt(:,:,T-1);
+PtTm(:,:,T)=(eye(rlag)-K(:,:,T)*C)*A*Ptt(:,:,T-1);
 
 for j =1:T-1
     xitT(:,T-j)= xitt(:,T-j)+J(:,:,T-j)*(xitT(:,T+1-j)-xittm(:,T+1-j));

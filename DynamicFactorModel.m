@@ -1,5 +1,5 @@
-function [x, F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(X, q, r, p, max_iter, thresh, blockCount, blockStruct, W)
+function [x, F_hat, iter, Cout, Aout, Q] = ...
+    DynamicFactorModel(X, q, r, max_iter, thresh, blockStruct, W, VARlags)
 % Extracts the unobservable factors using QML 
 % Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
 % (Doz, Giannone and Reichlin, 2012) 
@@ -16,7 +16,7 @@ function [x, F_hat, iter, C, A, Q] = ...
 
 OPTS.disp = 0;
 [~,n] = size(X);
-nlag = p-1;
+maxlag = max(VARlags);
 
 % Number of dynamic factors must not exceed total number of factors
 if r < q
@@ -26,10 +26,12 @@ end
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
 
-A_temp = zeros(r,r*(nlag + 1))';
-I = eye(r*(nlag+1),r*(nlag + 1));
+rlag = r*maxlag;
+
+A_temp = zeros(r,rlag)';
+I = eye(rlag,rlag);
 A = [A_temp';I(1:end-r,1:end)];
-Q = zeros((nlag+1)*r,(nlag+1)*r);
+Q = zeros(rlag,rlag);
 Q(1:r,1:r) = eye(r);
 
 % Create pseudo dataset, replacing NaN with 0, in order to find PCs
@@ -41,17 +43,16 @@ x_noNaN(isnan(x_noNaN)) = randn();
 [ v, ~ ] = eigs(cov(x_noNaN),r,'lm',OPTS);
 chi = x_noNaN*(v*v'); % Common component
 F = x_noNaN*v;
-
-if p > 0    
+if maxlag > 0    
     z = F;
     Z = [];
-    for kk = 1:p
-        Z = [Z z(p-kk+1:end-kk,:)]; % stacked regressors (lagged SPC)
+    for kk = 1:maxlag
+        Z = [Z z(maxlag-kk+1:end-kk,:)]; % stacked regressors (lagged SPC)
     end
-    z = z(p+1:end,:);
+    z = z(maxlag+1:end,:);
     % run the var chi(t) = A*chi(t-1) + e(t);
     A_temp = ((Z'*Z)\Z')*z;        % OLS estimator of the VAR transition matrix
-    A(1:r,1:r*p) = A_temp';
+    A(1:r,1:r*maxlag) = A_temp';
     e = z  - Z*A_temp;              % VAR residuals
     H = cov(e);                     % VAR covariance matrix
     Q(1:r,1:r) = H;                 % variance of the VAR shock when s=0
@@ -60,21 +61,19 @@ end
 % Initial factor values, initial state covariance
 z = F;
 Z = [];
-for kk = 0:nlag
-    Z = [Z z(nlag-kk+1:end-kk,:)];  % stacked regressors (lagged SPC)
+lagMinus1 = maxlag-1; %dont fully understand yet
+for kk = 0:lagMinus1
+    Z = [Z z(lagMinus1-kk+1:end-kk,:)];  % stacked regressors (lagged SPC)
 end
 initx = Z(1,:)';                                                                                
 initV = cov(Z);
 
-A = diag(diag(A));
-C = [v zeros(n,r*(nlag))];
-Q = diag(diag(Q));
+C = v;
 R = diag(diag(nancov(x-chi)));
 
 f=1; % Number of global factors
 [H, K, Cinit] = RestrictLoadingMatrix(n,r,f,blockStruct,C);
-
-C = Cinit;
+C = [Cinit zeros(n,r*(lagMinus1))];
 
 % Initialize the estimation and define uesful quantities
 previous_loglik = -inf;
@@ -87,13 +86,13 @@ y = x';
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
     [A, C, Q, R, x1, V1, loglik, xsmooth] = ...
-        EMiteration(y, A, C, Q, R, initx, initV, H, K, W);
+        EMiteration(y, r, A, C, Q, R, initx, initV, H, K, W);
     
     % Update the log likelihood                                                                          
     LL(iter) = loglik;
     
     %Check for convergence
-    converged = em_converged(loglik, previous_loglik, thresh,1);
+    converged = em_converged(loglik, previous_loglik, thresh);
     fprintf('Iteration %3d: %6.2f\n', iter, loglik);
     
     % Set up for next iteration
@@ -104,29 +103,24 @@ while (iter < max_iter) && ~converged
 end
 
 F_hat =  xsmooth(1:r,:)';
+Cout = C(1:n,1:r);
+Aout = A(1:r,1:rlag);
 
 
-function [converged, decrease] = em_converged(loglik, previous_loglik, threshold, check_increased)
-% EM_CONVERGED Has EM converged?
+function [converged, decrease] = em_converged(loglik, previous_loglik, threshold)
 % The EM optimisation converges if the slope of the log-likelihood 
-% function falls below the set threshold, 
-% i.e., |f(t) - f(t-1)| / avg < threshold,
-% where avg = (|f(t)| + |f(t-1)|)/2 and f(t) is log lik at iteration t.
+% function falls below the set threshold, i.e., |f(t) - f(t-1)| / avg < threshold,
+% where avg = (|f(t)| + |f(t-1)|)/2 and f(t) is loglik at iteration t.
 % 'threshold' defaults to 1e-4.
-%
-% This stopping criterion is from Numerical Recipes in C p423
 
 if nargin < 3, threshold = 1e-4; end
-if nargin < 4, check_increased = 1; end
 
 converged = 0;
 decrease = 0;
 
-if check_increased
-    if loglik - previous_loglik < -1e-3 % allow for a little imprecision
-             fprintf(1, '!! Decrease', previous_loglik, loglik);
-        decrease = 1;
-    end
+if loglik - previous_loglik < -1e-3 % allow for a little imprecision
+    fprintf('!! Decrease');
+    decrease = 1;
 end
 
 delta_loglik = abs(loglik - previous_loglik);

@@ -19,22 +19,20 @@ function [xitt,xittm,Ptt,Pttm,loglik, Kgain]=KalmanFilter(initx,initV,x,A,C,R,Q)
 % loglik - value of the loglikelihood
 
 [T,n]=size(x);
-r=size(A,1);
+rlag=size(A,1);
 
 y=x';
 
 % Initialization
-xittm=[initx zeros(r,T)];
-xitt=zeros(r,T);
+xittm=[initx zeros(rlag,T)];
+xitt=zeros(rlag,T);
 
-Pttm=zeros(r,r,T);
+Pttm=zeros(rlag,rlag,T);
 Pttm(:,:,1)=initV;
-Ptt=zeros(r,r,T);
+Ptt=zeros(rlag,rlag,T);
 
 logl = zeros(T,1);
-Kgain = zeros(r,n,T);
-mahalSum = 0;
-denomSum = 0;
+Kgain = zeros(rlag,n,T);
 % Forward pass over observed data
 for j=1:T
     
@@ -54,7 +52,8 @@ for j=1:T
     
     % Update predictions after observation
     xitt(:,j) = xittm(:,j) + K * innovation;
-    Ir = eye(r);
+    %Ptt(:,:,j)=Pttm(:,:,j) - K * C *Pttm(:,:,j);
+    Ir = eye(rlag);
     Ptt(:,:,j) = (Ir - K*C) * Pttm(:,:,j) * (Ir - K*C)' + K * R * K'; % Based on Max Welling explanations
     
     % Get next transition predictions, predicting one-step-ahead
@@ -76,8 +75,6 @@ for j=1:T
     detS = prod(diag(R))*det(eye(ss)+Pttm(:,:,j)*GG);
     denom = (2*pi)^(d/2)*sqrt(abs(detS));
     mahal = sum((e'/S) * e, 2);
-    mahalSum = mahalSum + mahal;
-    denomSum = denomSum + log(denom);
     logl(j) = -0.5*mahal - log(denom);
 end
 loglik=sum(logl);
