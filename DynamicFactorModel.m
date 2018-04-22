@@ -1,5 +1,5 @@
-function [x, F_hat, iter, Cout, Aout, Q] = ...
-    DynamicFactorModel(X, q, r, max_iter, thresh, blockStruct, W, VARlags)
+function [x, F_hat, iter, Cout, Aout, Qout] = ...
+    DynamicFactorModel(X, r, g, max_iter, thresh, blockStruct, W, VARlags, selfLag)
 % Extracts the unobservable factors using QML 
 % Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
 % (Doz, Giannone and Reichlin, 2012) 
@@ -17,16 +17,10 @@ function [x, F_hat, iter, Cout, Aout, Q] = ...
 OPTS.disp = 0;
 [~,n] = size(X);
 maxlag = max(VARlags);
-
-% Number of dynamic factors must not exceed total number of factors
-if r < q
-    error('q has to be less or equal to r')
-end
+rlag = r*maxlag;
 
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
-
-rlag = r*maxlag;
 
 A_temp = zeros(r,rlag)';
 I = eye(rlag,rlag);
@@ -35,7 +29,7 @@ Q = zeros(rlag,rlag);
 Q(1:r,1:r) = eye(r);
 
 % Create pseudo dataset, replacing NaN with 0, in order to find PCs
-rng('default');
+rng('default'); % Set specified seed, so that eigs is not random
 x_noNaN = x;
 x_noNaN(isnan(x_noNaN)) = randn();
 
@@ -56,6 +50,7 @@ if maxlag > 0
     e = z  - Z*A_temp;              % VAR residuals
     H = cov(e);                     % VAR covariance matrix
     Q(1:r,1:r) = H;                 % variance of the VAR shock when s=0
+    Q = diag(diag(Q));
 end
 
 % Initial factor values, initial state covariance
@@ -68,12 +63,15 @@ end
 initx = Z(1,:)';                                                                                
 initV = cov(Z);
 
-C = v;
-R = diag(diag(nancov(x-chi)));
+Atemp = A(1:r,1:r*maxlag);
+[G, rho, Ainit] = RestrictLagMatrix(Atemp, VARlags, selfLag);
+A(1:r,1:r*maxlag) = Ainit;
 
-f=1; % Number of global factors
-[H, K, Cinit] = RestrictLoadingMatrix(n,r,f,blockStruct,C);
+C = v;
+[H, kappa, Cinit] = RestrictLoadingMatrix(n,r,g,blockStruct,C);
 C = [Cinit zeros(n,r*(lagMinus1))];
+
+R = diag(diag(nancov(x-chi)));
 
 % Initialize the estimation and define uesful quantities
 previous_loglik = -inf;
@@ -86,7 +84,7 @@ y = x';
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
     [A, C, Q, R, x1, V1, loglik, xsmooth] = ...
-        EMiteration(y, r, A, C, Q, R, initx, initV, H, K, W);
+        EMiteration(y, r, A, C, Q, R, initx, initV, H, kappa, G, rho, W);
     
     % Update the log likelihood                                                                          
     LL(iter) = loglik;
@@ -105,6 +103,7 @@ end
 F_hat =  xsmooth(1:r,:)';
 Cout = C(1:n,1:r);
 Aout = A(1:r,1:rlag);
+Qout = Q(1:r,1:r);
 
 
 function [converged, decrease] = em_converged(loglik, previous_loglik, threshold)

@@ -25,11 +25,13 @@ blockSheet = 'Flexi';
 % blockFile = 'Blocks.xlsx';
 % blockSheet = 'B2';
 outputFile = 'DFM_Output';
+
+globalFactors = 1;
 maxIterations = 400;
 threshold = 1e-5;
-
 deflate = false;
 logdiff = true;
+selfLag = true; % Restrict factors to only load on own lags
 
 writeRaw = false;
 writeInput = false;
@@ -52,14 +54,14 @@ blockStructure = blockData(2:end,2:end);
 [preparedData, nanMatrix, newBlockStruct, blockCount, selection] = ... 
             PrepareData(data, deflate, logdiff, blockStructure);
 
-r = length(blockCount)+1;
+r = length(blockCount)+globalFactors;
 
 %***********************
 % Running the algorithm
 %***********************
 [normData, F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(preparedData, r, r, maxIterations, threshold, ...
-                       newBlockStruct, nanMatrix, lags);
+    DynamicFactorModel(preparedData, r, globalFactors, maxIterations, threshold, ...
+                       newBlockStruct, nanMatrix, lags, selfLag);
 
 fprintf('Finished in %d iterations', iter-1);
 

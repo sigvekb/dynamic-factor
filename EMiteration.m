@@ -1,5 +1,5 @@
 function [A, C, Q, R, x1, V1, loglik_t, xsmooth] = ...
-    EMiteration(y, r, A, C, Q, R, initx, initV, H, K, W)
+    EMiteration(y, r, A, C, Q, R, initx, initV, H, kappa, G, rho, W)
 
 [n, T] = size(y);
 rlag = size(A,1);
@@ -11,7 +11,6 @@ x1 = xsmooth(:,1);
 V1 = Vsmooth(:,:,1);
 
 % Calculate necessary moments
-
 delta = zeros(n,rlag);
 gamma = zeros(rlag,rlag);
 gammaKronW = zeros(n*r, n*r);
@@ -44,13 +43,13 @@ gammaKronR = kron(gamInv, R);
 deltaC = delta(:,1:r);
 gKW_Chol = inv(chol(gammaKronW));
 gKW_Inv = gKW_Chol * gKW_Chol';
-% Cvec = gammaKronW \ deltaC(:);
 Cvec = gKW_Inv * deltaC(:);
+
 H_gKR_H = H * gammaKronR * H';
 HgH_chol = inv(chol(H_gKR_H));
 HgH_inv = HgH_chol * HgH_chol';
-% Cres = Cvec + ((gammaKronR * H') / (H * gammaKronR * H')) * (K - H * Cvec);
-Cres = Cvec + gammaKronR * H' * HgH_inv * (K-H*Cvec);
+Cres = Cvec + gammaKronR * H' * HgH_inv * (kappa-H*Cvec);
+
 C(1:n,1:r) = reshape(Cres, [n,r]);
 C(abs(C)<1e-10) = 0; % Remove almost-zero entries..
 
@@ -77,13 +76,19 @@ R = diag(diag(R));
 gamChol1 = inv(chol(gamma1(1:rlag,1:rlag)));
 gamInv1 = gamChol1 * gamChol1';
 Atemp = beta(1:r,1:rlag) * gamInv1;
-%Atemp = beta(1:r,1:rlag) / (gamma1(1:rlag,1:rlag));
-A(1:r,1:rlag) = Atemp;
+
+gam1_chol = inv(chol(gamma1(1:rlag,1:rlag)));
+gamInv = gam1_chol * gam1_chol';
+gamma1KronQ = kron(gamInv, Q(1:r,1:r));
+
+G_gKR_G = G * gamma1KronQ * G';
+GgG_chol = inv(chol(G_gKR_G));
+GgG_inv = GgG_chol * GgG_chol';
+Avec = Atemp(:) + gamma1KronQ * G' * GgG_inv * (rho-G*Atemp(:));
+Avec(abs(Avec)<1e-10) = 0; % Remove almost-zero entries..
+A(1:r,1:rlag) = reshape(Avec, [r,rlag]);
+
 % Update Q (Factor VAR error covariance matrix)
 % Q = ( (sum_t=2^T f_t*f'_t) - A * (sum_2=1^T f_t-1*f'_t) )/(T-1)
-Q(1:r,1:r) = (gamma2(1:r,1:r) - Atemp*beta(1:r,1:rlag)') / (T-1);
-
-
-
-
-
+Qupdate = (gamma2(1:r,1:r) - Atemp*beta(1:r,1:rlag)') / (T-1);
+Q(1:r,1:r) = diag(diag(Qupdate));
