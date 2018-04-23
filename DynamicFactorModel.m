@@ -1,5 +1,5 @@
 function [x, F_hat, iter, Cout, Aout, Qout] = ...
-    DynamicFactorModel(X, r, g, max_iter, thresh, blockStruct, W, VARlags, selfLag)
+    DynamicFactorModel(X, r, g, max_iter, thresh, blockStruct, W, VARlags, selfLag, restrictQ)
 % Extracts the unobservable factors using QML 
 % Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
 % (Doz, Giannone and Reichlin, 2012) 
@@ -50,7 +50,9 @@ if maxlag > 0
     e = z  - Z*A_temp;              % VAR residuals
     H = cov(e);                     % VAR covariance matrix
     Q(1:r,1:r) = H;                 % variance of the VAR shock when s=0
-    Q = diag(diag(Q));
+    if restrictQ
+        Q = diag(diag(Q));
+    end
 end
 
 % Initial factor values, initial state covariance
@@ -84,7 +86,7 @@ y = x';
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
     [A, C, Q, R, x1, V1, loglik, xsmooth] = ...
-        EMiteration(y, r, A, C, Q, R, initx, initV, H, kappa, G, rho, W);
+        EMiteration(y, r, A, C, Q, R, initx, initV, H, kappa, G, rho, W, restrictQ);
     
     % Update the log likelihood                                                                          
     LL(iter) = loglik;
@@ -98,6 +100,12 @@ while (iter < max_iter) && ~converged
     initx = x1;
     initV = V1;
     iter =  iter + 1;
+    %Test symmetry
+    if ~issymmetric(Q)
+        check=1;
+    else ~issymmetric(initV)
+        check=1;
+    end
 end
 
 F_hat =  xsmooth(1:r,:)';

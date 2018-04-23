@@ -10,34 +10,37 @@
 % blockFile - Name of Excel file containing block structure
 % blockSheet - Excel sheet name or number to read block structure from
 % maxIterations - Maximum number of iterations in EM algorithm
-% lags - Number of lags, (for now restricted to be 1)
 % threshold - The threshold value for convergence of the EM algorithm.
 %               Should be between 1e-4 and 1e-7
 
 % dir = 'C:\Users\sigvekb\Master\dynamic-factor';
-dir = 'C:\Users\Sigve Borgmo\OneDrive - NTNU\Indok\Master\dynamic-factor';
+%dir = '\MATLAB Drive\Master\dynamic-factor';
 dataFile = 'WorldBankCommodities.xlsx';
 dataSheet = 'Data';
 blockFile = 'Block_WBC.xlsx';
 blockSheet = 'Block1';
+% dataFile = 'SALMON.xlsm';
+% dataSheet = 'Data1';
+% blockFile = 'Block_WBC2.xlsx';
+% blockSheet = 'Block2';
 outputFile = 'DFM_Output';
 
 globalFactors = 2;
-maxIterations = 400;
-threshold = 1e-6;
+maxIterations = 300;
+threshold = 1e-10;
 deflate = false;
 logdiff = true;
 selfLag = true; % Restrict factors to only load on own lags
+restrictQ = false;
 
 writeRaw = false;
 writeInput = false;
 writeNormalized = false;
 
-%digits(100);
 %*********************
 % Preparation
 %*********************
-cd(dir);
+%cd(dir);
 
 % Data preparation
 [data, txt]           = xlsread(dataFile, dataSheet, 'A1:FZ1000');
@@ -57,7 +60,7 @@ r = length(blockCount)+globalFactors;
 %***********************
 [normData, F_hat, iter, C, A, Q] = ...
     DynamicFactorModel(preparedData, r, globalFactors, maxIterations, threshold, ...
-                       newBlockStruct, nanMatrix, lags, selfLag);
+                       newBlockStruct, nanMatrix, lags, selfLag, restrictQ);
 
 fprintf('Finished in %d iterations', iter-1);
 

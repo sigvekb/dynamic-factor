@@ -21,10 +21,8 @@ xittm=xittm(:,1:end-1);
 J=zeros(rlag,rlag,T);
 
 for i=1:T-1
-    Pchol = inv(chol(Pttm(:,:,i+1)));
-    Pinv = Pchol * Pchol';
-    %J(:,:,i)= (Ptt(:,:,i) * A') / Pttm(:,:,i+1);
-    J(:,:,i)= (Ptt(:,:,i) * A') * Pinv;
+    Pinv = CholeskyInversion(Pttm(:,:,i+1));
+    J(:,:,i)= Ptt(:,:,i) * A' * Pinv;
 end
 
 xitT=[zeros(rlag,T-1)  xitt(:,T)];

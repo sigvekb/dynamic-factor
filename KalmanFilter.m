@@ -38,10 +38,9 @@ for j=1:T
     
     % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
     % equations below
-    L = C * Pttm(:,:,j) * C' + R;
-    L_step = inv(chol(L)); 
-    L_inv = L_step * L_step';
-    K = (Pttm(:,:,j) * C') * L_inv; % / L;
+    L = C * Pttm(:,:,j) * C' + R; 
+    L_inv = CholeskyInversion(L);
+    K = (Pttm(:,:,j) * C') * L_inv;
     Kgain(:,:,j) = K;
     innovation = (y(:,j)-C*xittm(:,j));
     

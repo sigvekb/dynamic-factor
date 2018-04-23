@@ -1,5 +1,5 @@
 function [A, C, Q, R, x1, V1, loglik_t, xsmooth] = ...
-    EMiteration(y, r, A, C, Q, R, initx, initV, H, kappa, G, rho, W)
+    EMiteration(y, r, A, C, Q, R, initx, initV, H, kappa, G, rho, W, restrictQ)
 
 [n, T] = size(y);
 rlag = size(A,1);
@@ -36,18 +36,14 @@ gamma2 = gamma - xsmooth(:,1)*xsmooth(:,1)' - Vsmooth(:,:,1);
 %-------------------------------------------------------------------------                        
 % Update C (See Banbura(2010) and Bork(2008))
 % C is block-restricted and handles missing values
-gamChol = inv(chol(gamma(1:r,1:r)));
-gamInv = gamChol * gamChol';
-gammaKronR = kron(gamInv, R);
+gammaInv = CholeskyInversion(gamma(1:r,1:r));
+gammaKronR = kron(gammaInv, R);
 
 deltaC = delta(:,1:r);
-gKW_Chol = inv(chol(gammaKronW));
-gKW_Inv = gKW_Chol * gKW_Chol';
+gKW_Inv = CholeskyInversion(gammaKronW);
 Cvec = gKW_Inv * deltaC(:);
 
-H_gKR_H = H * gammaKronR * H';
-HgH_chol = inv(chol(H_gKR_H));
-HgH_inv = HgH_chol * HgH_chol';
+HgH_inv = CholeskyInversion(H*gammaKronR*H');
 Cres = Cvec + gammaKronR * H' * HgH_inv * (kappa-H*Cvec);
 
 C(1:n,1:r) = reshape(Cres, [n,r]);
@@ -73,17 +69,12 @@ R = diag(diag(R));
 
 % Update A (Factor VAR coefficients)
 % A = (sum_t=2^T f_t*f'_t-1)* (sum_2=1^T f_t-1*f'_t-1)^-1
-gamChol1 = inv(chol(gamma1(1:rlag,1:rlag)));
-gamInv1 = gamChol1 * gamChol1';
-Atemp = beta(1:r,1:rlag) * gamInv1;
+gamma1Inv = CholeskyInversion(gamma1(1:rlag,1:rlag));
+Atemp = beta(1:r,1:rlag) * gamma1Inv;
 
-gam1_chol = inv(chol(gamma1(1:rlag,1:rlag)));
-gamInv = gam1_chol * gam1_chol';
-gamma1KronQ = kron(gamInv, Q(1:r,1:r));
+gamma1KronQ = kron(gamma1Inv, Q(1:r,1:r));
 
-G_gKR_G = G * gamma1KronQ * G';
-GgG_chol = inv(chol(G_gKR_G));
-GgG_inv = GgG_chol * GgG_chol';
+GgG_inv = CholeskyInversion(G * gamma1KronQ * G');
 Avec = Atemp(:) + gamma1KronQ * G' * GgG_inv * (rho-G*Atemp(:));
 Avec(abs(Avec)<1e-10) = 0; % Remove almost-zero entries..
 A(1:r,1:rlag) = reshape(Avec, [r,rlag]);
@@ -91,4 +82,8 @@ A(1:r,1:rlag) = reshape(Avec, [r,rlag]);
 % Update Q (Factor VAR error covariance matrix)
 % Q = ( (sum_t=2^T f_t*f'_t) - A * (sum_2=1^T f_t-1*f'_t) )/(T-1)
 Qupdate = (gamma2(1:r,1:r) - Atemp*beta(1:r,1:rlag)') / (T-1);
-Q(1:r,1:r) = diag(diag(Qupdate));
+if restrictQ
+    Q(1:r,1:r) = diag(diag(Qupdate));
+else
+    Q(1:r,1:r) = Qupdate;
+end
