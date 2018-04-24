@@ -1,16 +1,29 @@
 function [preparedData, nanMatrix, newBlockStruct, blockCount, varsFound] = ...
-            PrepareData(data, deflate, logdiff, blockStruct)
+            PrepareData(data, deflate, logdiff, blockStruct, YoY)
 
 preparedData = data;
 preparedData(preparedData == 0) = NaN;
+[T, n] = size(preparedData);
 
 if deflate
     preparedData = deflateAdjust(preparedData);
 end
 % Must take YoY variables into account at some point
+
 if logdiff
-    preparedData = diff(log(preparedData));
-    preparedData(preparedData == Inf | preparedData == -Inf) = NaN;
+    diffedData = zeros(T-1,n);
+    for v=1:n
+        if YoY(v)
+            first12 = log(preparedData(1:(end-12),v));
+            next12 = log(preparedData(13:end,v));
+            logdiff12 = next12-first12;
+            diffedData(:,v) = [NaN(11,1,'like',logdiff12);logdiff12];
+        else
+            diffedData(:,v) = diff(log(preparedData(:,v)));
+        end
+    end
+    diffedData(diffedData == Inf | diffedData == -Inf) = NaN;
+    preparedData = diffedData;
 end
 
 % Define block structure in terms of new ordering

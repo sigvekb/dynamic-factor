@@ -38,9 +38,14 @@ for j=1:T
     
     % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
     % equations below
-    L = C * Pttm(:,:,j) * C' + R; 
-    L_inv = CholeskyInversion(L);
-    K = (Pttm(:,:,j) * C') * L_inv;
+    L = C * Pttm(:,:,j) * C' + R;
+    try
+        L_inv = CholeskyInversion(L);
+        K = (Pttm(:,:,j) * C') * L_inv;
+    catch ME
+        warning('Kalman gain: Matrix is not positive definite anymore');
+        K = (Pttm(:,:,j) * C') / L;
+    end
     Kgain(:,:,j) = K;
     innovation = (y(:,j)-C*xittm(:,j));
     

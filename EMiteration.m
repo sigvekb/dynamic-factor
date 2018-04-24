@@ -75,6 +75,7 @@ Atemp = beta(1:r,1:rlag) * gamma1Inv;
 gamma1KronQ = kron(gamma1Inv, Q(1:r,1:r));
 
 GgG_inv = CholeskyInversion(G * gamma1KronQ * G');
+%GgG = G * gamma1KronQ * G';
 Avec = Atemp(:) + gamma1KronQ * G' * GgG_inv * (rho-G*Atemp(:));
 Avec(abs(Avec)<1e-10) = 0; % Remove almost-zero entries..
 A(1:r,1:rlag) = reshape(Avec, [r,rlag]);

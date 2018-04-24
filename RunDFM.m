@@ -14,23 +14,23 @@
 %               Should be between 1e-4 and 1e-7
 
 % dir = 'C:\Users\sigvekb\Master\dynamic-factor';
-%dir = '\MATLAB Drive\Master\dynamic-factor';
-dataFile = 'WorldBankCommodities.xlsx';
-dataSheet = 'Data';
-blockFile = 'Block_WBC.xlsx';
-blockSheet = 'Block1';
+% dir = '\MATLAB Drive\Master\dynamic-factor';
+dataFile = 'Dataset.xlsx';
+dataSheet = 'Salmon2';
+blockFile = 'Blocks.xlsx';
+blockSheet = 'Block2';
 % dataFile = 'SALMON.xlsm';
 % dataSheet = 'Data1';
 % blockFile = 'Block_WBC2.xlsx';
 % blockSheet = 'Block2';
 outputFile = 'DFM_Output';
 
-globalFactors = 2;
-maxIterations = 300;
-threshold = 1e-10;
+globalFactors = 4;
+maxIterations = 400;
+threshold = 1e-6;
 deflate = false;
 logdiff = true;
-selfLag = true; % Restrict factors to only load on own lags
+selfLag = false; % Restrict factors to only load on own lags
 restrictQ = false;
 
 writeRaw = false;
@@ -47,11 +47,12 @@ writeNormalized = false;
 [blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
 
 lags = blockData(1,:);
-lags = [ones(1,globalFactors-1)*lags(1) lags];
+YoYflag = data(1,:);
+data = data(2:end,:);
 blockStructure = blockData(2:end,2:end);
 
 [preparedData, nanMatrix, newBlockStruct, blockCount, selection] = ... 
-            PrepareData(data, deflate, logdiff, blockStructure);
+            PrepareData(data, deflate, logdiff, blockStructure, YoYflag);
 
 r = length(blockCount)+globalFactors;
 

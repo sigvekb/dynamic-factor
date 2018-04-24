@@ -18,6 +18,7 @@ OPTS.disp = 0;
 [~,n] = size(X);
 maxlag = max(VARlags);
 rlag = r*maxlag;
+VARlags = [ones(1,g-1)*VARlags(1) VARlags];
 
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
@@ -100,12 +101,6 @@ while (iter < max_iter) && ~converged
     initx = x1;
     initV = V1;
     iter =  iter + 1;
-    %Test symmetry
-    if ~issymmetric(Q)
-        check=1;
-    else ~issymmetric(initV)
-        check=1;
-    end
 end
 
 F_hat =  xsmooth(1:r,:)';
