@@ -26,7 +26,7 @@ blockSheet = 'Block2';
 outputFile = 'DFM_Output';
 
 globalFactors = 4;
-maxIterations = 400;
+maxIterations = 100;
 threshold = 1e-6;
 deflate = false;
 logdiff = true;
@@ -41,26 +41,33 @@ writeNormalized = false;
 % Preparation
 %*********************
 %cd(dir);
+%==================
+% DFM preparation
+%==================
+[rawData, txt] = xlsread(dataFile, dataSheet, 'A1:FZ1000');
+YoY = rawData(1,:);
+rawData = rawData(2:end,:);
 
-% Data preparation
-[data, txt]           = xlsread(dataFile, dataSheet, 'A1:FZ1000');
+inputData = rawData;
+inputData = Deflate(deflate, inputData);
+inputData = LogDiff(logdiff, inputData, YoY);
+
 [blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
-
 lags = blockData(1,:);
-YoYflag = data(1,:);
-data = data(2:end,:);
 blockStructure = blockData(2:end,2:end);
 
-[preparedData, nanMatrix, newBlockStruct, blockCount, selection] = ... 
-            PrepareData(data, deflate, logdiff, blockStructure, YoYflag);
+totalFactors = size(blockStructure,2)+globalFactors;
 
-r = length(blockCount)+globalFactors;
+[DFMData, newBlockStruct, selection] = ...
+            SelectData(inputData, blockStructure);
+        
+nanMatrix = CreateNaNMatrix(DFMData);
 
-%***********************
+%=======================
 % Running the algorithm
-%***********************
+%=======================
 [normData, F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(preparedData, r, globalFactors, maxIterations, threshold, ...
+    DynamicFactorModel(DFMData, totalFactors, globalFactors, maxIterations, threshold, ...
                        newBlockStruct, nanMatrix, lags, selfLag, restrictQ);
 
 fprintf('Finished in %d iterations', iter-1);
@@ -77,7 +84,7 @@ fprintf('Finished in %d iterations', iter-1);
 dates = txt(2:end-1,1)';
 varNames = txt(1,2:end);
 varNames = varNames(selection);
-rawData = data(:, selection);
+rawData = rawData(:, selection);
 factorNames = blockTxt(1,2:end);
 factorNames = [repelem(("Global"),globalFactors) factorNames];
 maxlags = max(lags);
