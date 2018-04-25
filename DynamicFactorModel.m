@@ -1,27 +1,23 @@
-function [x, F_hat, iter, Cout, Aout, Qout, R] = ...
-    DynamicFactorModel(X, r, g, max_iter, thresh, blockStruct, W, VARlags, selfLag, restrictQ)
+function [x, factors, iter, Aout, Cout, Qout, R, initV] = ...
+    DynamicFactorModel(X, g, max_iter, thresh, selfLag, restrictQ, ...
+                       blockStruct, VARlags, Ain,Cin,Qin,Rin, x_in, V_in)
 % Extracts the unobservable factors using QML 
-% Max Likelihood estimates using the Expectation Maximization (EM) algorithm 
-% (Doz, Giannone and Reichlin, 2012) 
-%                         
-% INPUTS
-% X - matrix of observable variables
-% r - # of static factors
-% q - # of dynamic factors
-% p - # length of ar filter on common factors
-% max_iter - max # of iterations in estimation
+% Max Likelihood estimates using the Expectation Maximization (EM) algorithm
 %
 % OUTPUTS
 % F_hat -   factors from QML
 
 OPTS.disp = 0;
 [~,n] = size(X);
+r = size(blockStruct,2)+g;
 maxlag = max(VARlags);
 rlag = r*maxlag;
 VARlags = [ones(1,g-1)*VARlags(1) VARlags];
 
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
+
+W = CreateNaNMatrix(X);
 
 A_temp = zeros(r,rlag)';
 I = eye(rlag,rlag);
@@ -83,6 +79,15 @@ LL = zeros(1, max_iter);
 converged = 0;
 y = x';
 
+if ~isempty(Ain)
+    A(1:r,1:r*maxlag) = Ain;
+    C(1:n,1:r) = Cin;
+    Q(1:r,1:r) = Qin;
+    R = Rin;
+    initx(1:r,1) = x_in;
+    initV = V_in;
+end
+
 % Estimation with the EM algorithm
 % Repeat the algorithm until convergence
 while (iter < max_iter) && ~converged
@@ -103,7 +108,7 @@ while (iter < max_iter) && ~converged
     iter =  iter + 1;
 end
 
-F_hat =  xsmooth(1:r,:)';
+factors =  xsmooth(1:r,:)';
 Cout = C(1:n,1:r);
 Aout = A(1:r,1:rlag);
 Qout = Q(1:r,1:r);

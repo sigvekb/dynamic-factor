@@ -16,30 +16,27 @@
 % dir = 'C:\Users\sigvekb\Master\dynamic-factor';
 % dir = '\MATLAB Drive\Master\dynamic-factor';
 dataFile = 'Dataset.xlsx';
-dataSheet = 'Salmon2';
+dataSheet = 'Comm2';
 blockFile = 'Blocks.xlsx';
-blockSheet = 'Block2';
+blockSheet = 'Comm2';
 % dataFile = 'SALMON.xlsm';
 % dataSheet = 'Data1';
 % blockFile = 'Block_WBC2.xlsx';
 % blockSheet = 'Block2';
 outputFile = 'DFM_Output';
 
-globalFactors = 4;
+globalFactors = 1;
 maxIterations = 100;
-threshold = 1e-6;
+threshold = 1e-7;
 deflate = false;
 logdiff = true;
-selfLag = false; % Restrict factors to only load on own lags
-restrictQ = false;
+selfLag = true; % Restrict factors to only load on own lags
+restrictQ = true;
 
 writeRaw = false;
 writeInput = false;
 writeNormalized = false;
 
-%*********************
-% Preparation
-%*********************
 %cd(dir);
 %==================
 % DFM preparation
@@ -54,21 +51,18 @@ inputData = LogDiff(logdiff, inputData, YoY);
 
 [blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
 lags = blockData(1,:);
-blockStructure = blockData(2:end,2:end);
-
-totalFactors = size(blockStructure,2)+globalFactors;
+blockStruct = blockData(2:end,2:end);
 
 [DFMData, newBlockStruct, selection] = ...
-            SelectData(inputData, blockStructure);
-        
-nanMatrix = CreateNaNMatrix(DFMData);
+            SelectData(inputData, blockStruct);
 
 %=======================
 % Running the algorithm
 %=======================
 [normData, F_hat, iter, C, A, Q] = ...
     DynamicFactorModel(DFMData, totalFactors, globalFactors, maxIterations, threshold, ...
-                       newBlockStruct, nanMatrix, lags, selfLag, restrictQ);
+                       newBlockStruct, nanMatrix, lags, selfLag, restrictQ, ...
+                       [],[],[],[]);
 
 fprintf('Finished in %d iterations', iter-1);
 

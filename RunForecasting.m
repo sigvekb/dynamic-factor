@@ -14,8 +14,8 @@ outputFile = 'ForecastingOutput';
 %===================
 % Forecasting input
 %===================
-horizons = (1:3); %[1,3,6]
-outOfSampleMonths = 36;
+horizons = (1:5); %[1,3,6]
+outOfSampleMonths = 24;
 
 %===========
 % DFM Input
@@ -24,8 +24,8 @@ blockFile = 'Blocks.xlsx';
 blockSheet = 'Block2';
 
 DFM = true;         % True: Run forecasting with DFM
-globalFactors = 4;  % Number of global factors
-maxIter = 400;      % Max number of iterations
+globalFactors = 1;  % Number of global factors
+maxIter = 50;       % Max number of iterations
 threshold = 1e-6;   % Convergence threshold for EM algorithm
 deflate = false;    % True: Data is deflated according to US CPI
 logdiff = true;     % True: Data is log differenced
@@ -61,13 +61,16 @@ inputData = LogDiff(logdiff, inputData, YoY);
 %==================
 [blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
 lags = blockData(1,:);
-blockStructure = blockData(2:end,2:end);
+blockStruct = blockData(2:end,2:end);
 
-totalFactors = size(blockStructure,2)+globalFactors;
+totalFactors = size(blockStruct,2)+globalFactors;
 nanMatrix = CreateNaNMatrix(inputData);
 
 [DFMData, newBlockStruct, DFMselection] = ...
-            SelectData(inputData, blockStructure);
+            SelectData(inputData, blockStruct);
+
+varNames = txt(1,2:end);
+varNames = varNames(DFMselection);
 
 
 %============================
@@ -93,20 +96,60 @@ end
 %========================
 % Introduce necessary variables/collectors, such that all relevant data
 % from the forecasting scheme is saved
+h_periods = length(horizons);
+maxHorizon = max(horizons);
 
+[T,n] = size(DFMData);
+DFM_forecasts = zeros(outOfSampleMonths,n,h_periods);
 
 %=============
 % Forecasting
 %=============
-
 % Run initial DFM
-[~, factors, ~, A, C, Q, R] = ...
-    DynamicFactorModel(DFMData, totalFactors, globalFactors, maxIter, threshold, ...
-                       newBlockStruct, nanMatrix, lags, selfLag, restrictQ);
-
+[DFMnorm, originalFactors, ~, A, C, Q, R,initV] = ...
+    DynamicFactorModel(DFMData, globalFactors, maxIter, ...
+                threshold, selfLag, restrictQ, blockStruct, lags, []);
+initx = factors(1,:)';
+originalC = C;            
 for t=1:outOfSampleMonths
+    % Forecast DFM
+    removeMonths = outOfSampleMonths-t+1;
+    forecastData = [DFMData(1:(end-removeMonths),:); NaN([maxHorizon,n])];
+    [~, factors, ~, A, C, Q, R,initV] = ...
+            DynamicFactorModel(forecastData, globalFactors, maxIter, ...
+                threshold, selfLag, restrictQ, newBlockStruct, lags, []);
+%     else
+%         [~, factors, ~, A, C, Q, R,initV] = ...
+%             DynamicFactorModel(forecastData, globalFactors, maxIter, ...
+%                 threshold, selfLag, restrictQ, newBlockStruct, lags, ...
+%                 A,C,Q,R,initx,initV);
+%     end
     
+    initx = factors(1,:)';
     
+    for h=1:h_periods
+        horizon=horizons(h);
+        if removeMonths>=horizon
+            f_index = size(factors,1)-maxHorizon+horizon;
+            forecast = C*factors(f_index,:)';
+            DFM_forecasts(horizon+t-1,:,h) = forecast';
+        end
+    end
 end
 
+[varDecomp] = VarianceDecomposition(DFMnorm, originalFactors, originalC, globalFactors);
 
+DFM_forecasts(DFM_forecasts == 0) = NaN;
+% Stores all RMSFE for different horizons and variables 
+% (will be extended to store for all models)
+RMSFE = zeros(n, h_periods);
+for i=1:h_periods
+    a_index = T-outOfSampleMonths+1;
+    actualValues = DFMnorm(a_index:end,:);
+    forecastValues = DFM_forecasts(:,:,i);
+    rmse = sqrt(mean(actualValues-forecastValues,1,'omitnan').^2);
+    RMSFE(:,i) = rmse';
+end
+
+salmonForecast = permute(DFM_forecasts(:,8,:),[1,3,2]);
+salmonActual = DFMnorm((end-outOfSampleMonths+1):end,8);
