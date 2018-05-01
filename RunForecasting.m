@@ -15,7 +15,7 @@ outputFile = 'ForecastingOutput';
 % Forecasting input
 %===================
 horizons = [1,3,6];
-outOfSampleMonths = 36;
+outOfSampleMonths = 12;
 
 %===========
 % DFM Input
@@ -25,7 +25,7 @@ blockSheet = 'B6';
 
 DFM = true;         % True: Run forecasting with DFM
 globalFactors = 0;  % Number of global factors
-maxIter = 100;       % Max number of iterations
+maxIter = 20;       % Max number of iterations
 threshold = 1e-6;   % Convergence threshold for EM algorithm
 deflate = false;    % True: Data is deflated according to US CPI
 logdiff = true;     % True: Data is log differenced
@@ -38,12 +38,14 @@ restrictQ = false;  % True: Q matrix is restricted to be diagonal
 modelFile = 'Benchmarks.xlsx';
 modelSheet = 'VAR';
 
-ARIMA = false;
-ARIMA_ar = 3;
-ARIMA_ma = 2;
+ARIMA = true;
+ARIMA_ar = 4;
+ARIMA_ma = 4;
 
 VAR = true;
 VAR_lags = 4;
+
+naive = false;
 
 %======================
 % Data preparation
@@ -90,238 +92,163 @@ if ARIMA
 end
 
 
-%========================
-% Forecasting preparation
-%========================
-h_periods = length(horizons);
-maxHorizon = max(horizons);
-
-[T,n] = size(DFMData);
-DFM_forecasts = zeros(outOfSampleMonths,n,h_periods);
-
-nVAR = size(VAR_norm,2);
-VAR_forecasts = zeros(outOfSampleMonths,nVAR,h_periods);
-VARModel = varm(nVAR, VAR_lags);
-
-%==============
+%=============
 % Forecasting
-%==============
-for t=1:outOfSampleMonths
-    fprintf('\nForecasting month: %d of %d\n', t, outOfSampleMonths);
-    removeMonths = outOfSampleMonths-t+1;
-    
-    % Forecast DFM
-    if DFM
-        
-        forecastData = [DFMData(1:(end-removeMonths),:); NaN([maxHorizon,n])];
-        [~, factors, ~, A, C, Q, R,initV] = ...
-                DynamicFactorModel(forecastData, globalFactors, maxIter, ...
-                    threshold, selfLag, restrictQ, newBlockStruct, lags, []);
-
-        for h=1:h_periods
-            horizon=horizons(h);
-            if removeMonths>=horizon
-                f_index = size(factors,1)-maxHorizon+horizon;
-                y_f = C*factors(f_index,:)';
-                DFM_forecasts(horizon+t-1,:,h) = y_f';
-            end
-        end
-    end
-
-    % Forecast VAR
-    if VAR
-        forecastData_VAR = VAR_norm(1:(end-removeMonths),:);
-        
-        VARFit = estimate(VARModel,forecastData_VAR,'display','off');
-        VARForecasts = forecast(VARFit,maxHorizon,forecastData_VAR);
-        
-        for h=1:h_periods
-            horizon=horizons(h);
-            if removeMonths>=horizon
-                VAR_forecasts(horizon+t-1,:,h) = VARForecasts(horizon, :);
-            end
-        end
-    end
-end
-
-
+%=============
 if DFM
-    % Variance Decomposition of DFM
-    demean = bsxfun(@minus, DFMData, nanmean(DFMData));
-    DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));  
-    [varDecomp] = VarianceDecomposition(DFMnorm, factors(1:(end-maxHorizon+1),:), C, globalFactors);
-end
-
-%==================================
-% Calculate forecast error measures
-%==================================
-if DFM
-    DFM_forecasts(DFM_forecasts == 0) = NaN;
-    RMSE_DFM = zeros(n,h_periods);
-    RMSFE_DFM = zeros(n,h_periods);
-    actual_DFM = DFMnorm(T-outOfSampleMonths+1:end,:);
+    [forecasts_DFM, varDecomp] = ...
+        ForecastDFM(DFMData,horizons,outOfSampleMonths, globalFactors, ...
+                    maxIter, threshold, selfLag, restrictQ, newBlockStruct, lags);
 end
 if VAR
-    VAR_forecasts(VAR_forecasts == 0) = NaN;
-    RMSE_VAR = zeros(nVAR,h_periods);
-    RMSFE_VAR = zeros(nVAR,h_periods);
-    RMSE_relative = zeros(h_periods,1);
-    DM = zeros(h_periods,1); % Retrieve P-value from Diebold-Mariano
-    actual_VAR = VAR_norm(T-outOfSampleMonths+1:end,:);
+    [forecasts_VAR] = ...
+        ForecastVAR(VAR_norm, horizons, VAR_lags, outOfSampleMonths);
 end
-
-
-for i=1:h_periods
-    h = horizons(i);
-    if DFM
-        forecast_DFM = DFM_forecasts(:,:,i);
-        [rmsfe, rmse] = RMSFE(actual_DFM, forecast_DFM, h);
-        RMSE_DFM(:,i) = rmse';
-        RMSFE_DFM(:,i) = rmsfe';
-    end
-    if VAR
-        forecast_VAR = VAR_forecasts(:,:,i);
-        [rmsfe, rmse] = RMSFE(actual_VAR, forecast_VAR, h);
-        RMSE_VAR(:,i) = rmse';
-        RMSFE_VAR(:,i) = rmsfe';
-    end
+if ARIMA
+    [forecasts_ARIMA] = ...
+        ForecastARIMA(ARIMA_norm, horizons, ARIMA_ar, ARIMA_ma, outOfSampleMonths);
+end
+if naive
+    [forecasts_naive] = ...
+    ForecastNaive(horizons, outOfSampleMonths);
 end
 
 %==============================
 % Statistics to compare models
 %==============================
-% Calculate relative RMSE
-salmonIndex = 1;
-if DFM && VAR
-    for i=1:h_periods
-        h = horizons(i);
-        RMSE_relative(i) = RMSFE_DFM(salmonIndex,i) / RMSFE_VAR(salmonIndex,i);
-        forecast_DFM = DFM_forecasts(h:end,1,i);
-        forecast_VAR = VAR_forecasts(h:end,1,i);
-        error_DFM = actual_DFM(h:end,salmonIndex)-forecast_DFM;
-        error_VAR = actual_VAR(h:end,salmonIndex)-forecast_VAR;
-        [~,p] = DieboldMariano(error_DFM, error_VAR);
-        DM(i) = p;
+mainVar = 1;
+demean = bsxfun(@minus, DFMData, nanmean(DFMData));
+DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));  
+mainActual = DFMnorm((end-outOfSampleMonths+1):end,1);
+if DFM
+    mainForecast_DFM = permute(forecasts_DFM(:,mainVar,:),[1,3,2]);
+    [Tf, H_len] = size(mainForecast_DFM);
+    benchmarks = zeros(Tf,H_len, 3);
+    if VAR
+        benchmarks(:,:,1) = permute(forecasts_VAR(:,mainVar,:),[1,3,2]);
     end
+    if ARIMA
+        benchmarks(:,:,2) = permute(forecasts_ARIMA(:,mainVar,:),[1,3,2]);
+    end
+    if naive
+        benchmarks(:,:,3) = permute(forecasts_naive(:,mainVar,:),[1,3,2]);
+    end
+    [statistics] = ForecastStatistics(mainActual, mainForecast_DFM, ...
+                                        benchmarks, horizons);
 end
 
-%=======
-% Plots
-%=======
-
-salmonForecast = permute(DFM_forecasts(:,1,:),[1,3,2]);
-salmonForecast_VAR = permute(VAR_forecasts(:,1,:),[1,3,2]);
-salmonActual = DFMnorm((T-outOfSampleMonths+1):end,1);
-
-%====PLOT===
+%====================
+% Creating dashboard
+%====================
 M=3;
-N=h_periods;
+N=H_len;
 
 p = panel();
 p.pack(M, N)
-
-% panel marigns
 p.de.margin = 8;
-p.margin = [6 6 6 6];
+p.margin = [7 7 7 7];
 
-% Antall kolonner må inn manuelt (M) !
 clf;
-error = salmonActual - salmonForecast(:,1);
+error = mainActual - mainForecast_DFM(:,1);
 maxErr = max(abs(error));
-for i = 1:N
-        p(1,i).select();
-        plot(salmonActual,'k','LineWidth',2);
-        hold on;
-        plot(salmonForecast(:,i),'r--','LineWidth',1);
-        plot(salmonForecast_VAR(:,i),'b--','LineWidth',1)
-        legend('PSALM','DFM Forecast','Location','NorthWest');
-        step = num2str(i);
-        txt = strcat('Forecast horizon h = ',step);
-        title(txt);
-        axis tight;
-        
-        set(gca,'FontSize',10,'FontName','Times');
-        grid on;
-        ax = gca;
-        ax.GridLineStyle = ':';
-        ax.GridAlpha = 0.2;
-        ax.FontSize = 10;
-        ax.LineWidth = 0.5;
-        %==========================
-        %== FORECAST ERROR ABS=====
-        %=========================
-        p(2,i).select();
-        error = salmonActual - salmonForecast(:,i);
-        bar(1:outOfSampleMonths,abs(error),'r');
-        
-        set(gca,'FontSize',10,'FontName','Times');
-        grid on;
-        ax = gca;
-        ax.GridLineStyle = ':';
-        ax.GridAlpha = 0.2;
-        ax.FontSize = 10;
-        ax.LineWidth = 0.5;
-        
-        axis tight;
-        ylim([0,maxErr+0.2*maxErr]);
-        hold on; 
-        
-        %=============================
-        %=== FORECASTR ERROR SCATTER==
-        %=============================
-        p(3,i).select();
-        scatter(1:outOfSampleMonths,error,'filled','r');
-        
-        set(gca,'FontSize',10,'FontName','Times');
-        grid on;
-        ax = gca;
-        ax.GridLineStyle = ':';
-        ax.GridAlpha = 0.2;
-        ax.FontSize = 10;
-        ax.LineWidth = 0.5;
-        
-        r = RMSE_relative(i);
-        rmse_num = num2str(r, '%1.3f');
-        pVal1 = DM(i,1);
-        if pVal1 < 0.01
-            DMstars = '***';
-        elseif pVal1 < 0.05
-            DMstars = '**';
-        elseif pVal1 < 0.10
-            DMstars = '*';
-        else
-            DMstars = '';
-        end
-        rmse_txt = strcat('RMSE DFM/VAR = ', rmse_num, DMstars);
-%         r = RMSE_relative_naive(i);
-%         rmse_num = num2str(r, '%1.3f');
-%         pVal2 = DM(i,2);
-%         if pVal2 < 0.01
-%             DMstars = '***';
-%         elseif pVal2 < 0.05
-%             DMstars = '**';
-%         elseif pVal2 < 0.10
-%             DMstars = '*';
-%         else
-%             DMstars = '';
-%         end
-%         rmse_naive_text = strcat('RMSE DFM/Naive = ', rmse_num, DMstars);
-        
-        x = 0.03+(1/h_periods)*(i-1);
-        dim = [x 0.2 0.2 0.44];
-        annotation(...
-            'textbox',dim,...
-            'String', {rmse_txt,strcat('p=',num2str(pVal1,'%1.3f'))},...
-            'FitBoxToText','on',...
-            'FontSize',8,...
-            'FontName','Times');
-        
-        ylim([-(maxErr+0.2),maxErr+0.2]);
-        xlim([0,outOfSampleMonths]);
-        
-        hline = refline(0,0);
-        hline.Color = 'k';
-        hline.LineWidth = 0.01;
-        hline.LineStyle = ':';
-        hold on;    
+for h=1:N
+    %==========
+    % PANEL 1
+    %==========
+    p(1,h).select();
+    plot(mainActual,'k','LineWidth',1.5);
+    hold on;
+    plot(mainForecast_DFM(:,h),'r-','LineWidth',1.5);
+    if VAR
+        plot(benchmarks(:,h,1),'b-','LineWidth',1.0);
+    end
+    if ARIMA
+        plot(benchmarks(:,h,2),'g-','LineWidth',1.0);
+    end
+    if naive
+        plot(benchmarks(:,h:3),'y-','LineWidth',1.0);
+    end
+
+    if h==1
+        legend('Actual','DFM','VAR','ARIMA','Location','NorthWest');
+    end
+    
+    title(strcat('Forecast Horizon, h = ',num2str(horizons(h))));
+    axis tight;
+    set(gca,'FontSize',10,'FontName','Times');
+    grid on;
+    ax = gca;
+    ax.GridLineStyle = ':';
+    ax.GridAlpha = 0.2;
+    ax.FontSize = 10;
+    ax.LineWidth = 0.5;
+    
+    %==========
+    % PANEL 2
+    %==========
+    p(2,h).select();
+    
+    r_VAR = statistics(3,h);
+    r_ARIMA = statistics(4,h);
+    r_naive = statistics(5,h);
+
+    VARstars = getStars(statistics(6,h));
+    ARIMAstars = getStars(statistics(7,h));
+    naivestars = getStars(statistics(8,h));
+    LBstars = getStars(statistics(9,h));
+    JBstars = getStars(statistics(10,h));
+    ENstars = getStars(statistics(11,h));
+    
+    rmse_txt_VAR = strcat('rRMSE_{VAR} = ', num2str(r_VAR, '%1.3f'), VARstars);
+    rmse_txt_ARIMA = strcat('rRMSE_{ARIMA} = ',num2str(r_ARIMA,'%1.3f'), ARIMAstars);
+    rmse_txt_naive = ''; %strcat(strcat('rRMSE_{naive} = ',num2str(r_naive,'%1.3f'), naivestars);
+    lb_txt = strcat('Ljung-Box:', num2str(statistics(9,h),'%1.2f'), LBstars);
+    jb_txt = strcat('Jarque Bera:', num2str(statistics(10,h),'%1.2f'), JBstars);
+    en_txt = strcat('Engle Test:', num2str(statistics(11,h),'%1.2f'), ENstars);
+    corr_txt = strcat('Sample Corr:',num2str(statistics(12,h),'%1.2f'));
+    
+    % Text box
+    x = -0.3+0.33*h;
+    dim = [x 0.2 0.2 0.42]; %location of box on the panel
+    annotation(...
+        'textbox',dim,...
+        'String', {'Forecast statistics:',' ', ...
+                   rmse_txt_VAR,rmse_txt_ARIMA,rmse_txt_naive,' ',...
+                   lb_txt,jb_txt,en_txt,corr_txt},...
+        'FitBoxToText','on',...
+        'FontSize',10,...
+        'FontName','Times');
+
+    hold on; 
+
+    %==========
+    % PANEL 3
+    %==========
+    p(3,h).select();
+    lower_ci = mainForecast_DFM(:,h)-1.96*statistics(13,h);
+    upper_ci = mainForecast_DFM(:,h)+1.96*statistics(13,h); 
+
+    h1 = plot(lower_ci','k--','LineWidth',1);
+    hold on;
+    h2 = plot(upper_ci','k--','LineWidth',1);
+
+    plot(mainActual,'k','LineWidth',1.5);
+    plot(mainForecast_DFM(:,h),'r','LineWidth',3);
+
+    z = (1:outOfSampleMonths)';
+    fill( [z' fliplr(z')],  [lower_ci' fliplr(upper_ci')], 'r', 'EdgeColor','none');
+    alpha(0.1);
+    
+    if h==1
+        legend('95% CI','Location','NorthWest');
+    end
+
+    set(gca,'FontSize',10,'FontName','Times');
+    axis tight;
+    grid on;
+    ax = gca;
+    ax.GridLineStyle = ':';
+    ax.GridAlpha = 0.2;
+    ax.FontSize = 10;
+    ax.LineWidth = 0.5;
 end
