@@ -15,7 +15,7 @@ outputFile = 'ForecastingOutput';
 % Forecasting input
 %===================
 horizons = [1,3,6];
-outOfSampleMonths = 12;
+outOfSampleMonths = 48;
 
 %===========
 % DFM Input
@@ -25,7 +25,7 @@ blockSheet = 'B6';
 
 DFM = true;         % True: Run forecasting with DFM
 globalFactors = 0;  % Number of global factors
-maxIter = 20;       % Max number of iterations
+maxIter = 100;       % Max number of iterations
 threshold = 1e-6;   % Convergence threshold for EM algorithm
 deflate = false;    % True: Data is deflated according to US CPI
 logdiff = true;     % True: Data is log differenced
@@ -39,13 +39,13 @@ modelFile = 'Benchmarks.xlsx';
 modelSheet = 'VAR';
 
 ARIMA = true;
-ARIMA_ar = 4;
-ARIMA_ma = 4;
+ARIMA_ar = 3;
+ARIMA_ma = 2;
 
 VAR = true;
 VAR_lags = 4;
 
-naive = false;
+GBM = true;
 
 %======================
 % Data preparation
@@ -67,6 +67,11 @@ blockStruct = blockData(2:end,2:end);
 
 [DFMData, newBlockStruct, DFMselection] = ...
             SelectData(inputData, blockStruct);
+        
+demean = bsxfun(@minus, DFMData, nanmean(DFMData));
+DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));
+mainVar = 1;
+mainActual = DFMnorm((end-outOfSampleMonths+1):end,mainVar);
 
 varNames = txt(1,2:end);
 varNames = varNames(DFMselection);
@@ -77,7 +82,6 @@ varNames = varNames(DFMselection);
 %============================
 [variables, models] = xlsread(modelFile, modelSheet, 'F1:AA100');
 
-% Create datasets
 if VAR
     [VAR_data, VAR_struct, VAR_selection] = ...
                 SelectData(inputData, variables(:,strcmp(models,'VAR')));
@@ -90,7 +94,6 @@ if ARIMA
     demean = bsxfun(@minus, ARIMA_data, nanmean(ARIMA_data));
     ARIMA_norm = bsxfun(@rdivide, demean, nanstd(demean));
 end
-
 
 %=============
 % Forecasting
@@ -108,18 +111,14 @@ if ARIMA
     [forecasts_ARIMA] = ...
         ForecastARIMA(ARIMA_norm, horizons, ARIMA_ar, ARIMA_ma, outOfSampleMonths);
 end
-if naive
-    [forecasts_naive] = ...
-    ForecastNaive(horizons, outOfSampleMonths);
+if GBM
+    [forecasts_GBM] = ...
+    ForecastGBM(DFMnorm(:,mainVar), horizons, outOfSampleMonths);
 end
 
 %==============================
 % Statistics to compare models
 %==============================
-mainVar = 1;
-demean = bsxfun(@minus, DFMData, nanmean(DFMData));
-DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));  
-mainActual = DFMnorm((end-outOfSampleMonths+1):end,1);
 if DFM
     mainForecast_DFM = permute(forecasts_DFM(:,mainVar,:),[1,3,2]);
     [Tf, H_len] = size(mainForecast_DFM);
@@ -130,8 +129,8 @@ if DFM
     if ARIMA
         benchmarks(:,:,2) = permute(forecasts_ARIMA(:,mainVar,:),[1,3,2]);
     end
-    if naive
-        benchmarks(:,:,3) = permute(forecasts_naive(:,mainVar,:),[1,3,2]);
+    if GBM
+        benchmarks(:,:,3) = forecasts_GBM;
     end
     [statistics] = ForecastStatistics(mainActual, mainForecast_DFM, ...
                                         benchmarks, horizons);
@@ -165,12 +164,12 @@ for h=1:N
     if ARIMA
         plot(benchmarks(:,h,2),'g-','LineWidth',1.0);
     end
-    if naive
-        plot(benchmarks(:,h:3),'y-','LineWidth',1.0);
+    if GBM
+        plot(benchmarks(:,h,3),'y-','LineWidth',1.0);
     end
 
     if h==1
-        legend('Actual','DFM','VAR','ARIMA','Location','NorthWest');
+        legend('Actual','DFM','VAR','ARIMA','GBM','Location','NorthWest');
     end
     
     title(strcat('Forecast Horizon, h = ',num2str(horizons(h))));
@@ -201,19 +200,31 @@ for h=1:N
     
     rmse_txt_VAR = strcat('rRMSE_{VAR} = ', num2str(r_VAR, '%1.3f'), VARstars);
     rmse_txt_ARIMA = strcat('rRMSE_{ARIMA} = ',num2str(r_ARIMA,'%1.3f'), ARIMAstars);
-    rmse_txt_naive = ''; %strcat(strcat('rRMSE_{naive} = ',num2str(r_naive,'%1.3f'), naivestars);
+    rmse_txt_GBM = strcat('rRMSE_{GBM} = ',num2str(r_naive,'%1.3f'), naivestars);
     lb_txt = strcat('Ljung-Box:', num2str(statistics(9,h),'%1.2f'), LBstars);
     jb_txt = strcat('Jarque Bera:', num2str(statistics(10,h),'%1.2f'), JBstars);
     en_txt = strcat('Engle Test:', num2str(statistics(11,h),'%1.2f'), ENstars);
     corr_txt = strcat('Sample Corr:',num2str(statistics(12,h),'%1.2f'));
+    relCorr_VAR = strcat('rCorr_{VAR} = ', num2str(statistics(13,h), '%1.3f'));
+    relCorr_ARIMA = strcat('rCorr_{ARIMA} = ', num2str(statistics(14,h), '%1.3f'));
+    relCorr_GBM = strcat('rCorr_{GBM} = ', num2str(statistics(15,h), '%1.3f'));
     
     % Text box
     x = -0.3+0.33*h;
-    dim = [x 0.2 0.2 0.42]; %location of box on the panel
+    dim1 = [x 0.2 0.2 0.42]; %location of box on the panel
+    y = x + 0.1666;
+    dim2 = [y 0.2 0.2 0.42];
     annotation(...
-        'textbox',dim,...
-        'String', {'Forecast statistics:',' ', ...
-                   rmse_txt_VAR,rmse_txt_ARIMA,rmse_txt_naive,' ',...
+        'textbox',dim1,...
+        'String', {'Benchmark statistics:',' ', ...
+                   rmse_txt_VAR,rmse_txt_ARIMA,rmse_txt_GBM,...
+                   relCorr_VAR,relCorr_ARIMA,relCorr_GBM},...
+        'FitBoxToText','on',...
+        'FontSize',10,...
+        'FontName','Times');
+    annotation(...
+        'textbox',dim2,...
+        'String', {'Forecast error statistics:',' ', ...
                    lb_txt,jb_txt,en_txt,corr_txt},...
         'FitBoxToText','on',...
         'FontSize',10,...

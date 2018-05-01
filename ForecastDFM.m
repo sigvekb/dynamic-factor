@@ -1,4 +1,5 @@
-function [forecasts, varDecomp] = ForecastDFM(data ,H, oosm, g, iter, thresh, sLag, resQ, blockStruct, lags)
+function [forecasts, varDecomp] = ForecastDFM(data,H,oosm,...
+                               g,iter,thresh,sLag,resQ,blockStruct,lags)
 H_len = length(H);
 maxH = max(H);
 

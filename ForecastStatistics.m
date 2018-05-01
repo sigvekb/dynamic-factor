@@ -13,6 +13,7 @@ JB = zeros(1,H_len);
 Engle = zeros(1,H_len);
 sampleCorr  = zeros(1,H_len);
 stdErr = zeros(1,H_len);
+relCorr = zeros(3,H_len);
 
 error_DFM = bsxfun(@minus, f_DFM, actual);
 
@@ -21,12 +22,18 @@ for h=1:H_len
     [rmsfe, rmse] = CalcRMSFE(actual, f_DFM(:,h), horizon);
     RMSE(1,h) = rmse;
     RMSFE(1,h) = rmsfe;
+    s = corrcoef(f_DFM(:,h),actual);
+    sampleCorr(1,h) = s(2,1);
     for i=1:3
         [~, rmse] = CalcRMSFE(actual, benchmarks(:,h,i), horizon);
         Relative_RMSE(i,h) = RMSE(1,h) / rmse; 
         errorBenchmark = bsxfun(@minus, benchmarks(:,h,i), actual);
         [~,p] = DieboldMariano(error_DFM(:,h), errorBenchmark);
         DM_benchmarks(i,h) = p;
+        
+        b = corrcoef(benchmarks(:,h,i),actual);
+        benchCorr = b(2,1);
+        relCorr(i,h) = sampleCorr(1,h) / benchCorr;
     end
     
     %Ljung-Box Q test
@@ -54,4 +61,5 @@ statistics = [RMSE;
               JB;
               Engle;
               sampleCorr;
-              stdErr];
+              stdErr;
+              relCorr];
