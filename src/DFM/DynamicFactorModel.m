@@ -1,11 +1,6 @@
 function [x, factors, iter, Aout, Cout, Qout, R, initV] = ...
     DynamicFactorModel(X, g, max_iter, thresh, selfLag, restrictQ, ...
                        blockStruct, VARlags, Ain,Cin,Qin,Rin, x_in, V_in)
-% Extracts the unobservable factors using QML 
-% Max Likelihood estimates using the Expectation Maximization (EM) algorithm
-%
-% OUTPUTS
-% F_hat -   factors from QML
 
 OPTS.disp = 0;
 [~,n] = size(X);
