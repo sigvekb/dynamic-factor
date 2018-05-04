@@ -1,13 +1,14 @@
 function [forecasts, varDecomp] = ForecastDFM(data,H,oosm,...
-                               g,iter,thresh,sLag,resQ,blockStruct,lags)
+                               g,iter,thresh,sLag,resQ,blockStruct,lags,v)
 H_len = length(H);
 maxH = max(H);
 
 [~,n] = size(data);
 forecasts = zeros(oosm,n,H_len);
 
+fprintf('\nNew run\n');
 for t=1:(oosm+maxH-1)
-    fprintf('\nDFM - forecasting month: %2d of %2d\n', t, oosm+maxH-1);
+    %fprintf('\nDFM - forecasting month: %2d of %2d\n', t, oosm+maxH-1);
     removeMonths = oosm+maxH-t;
     
     forecastData = [data(1:(end-removeMonths),:); NaN([maxH,n])];
@@ -23,8 +24,11 @@ for t=1:(oosm+maxH-1)
     end 
 end
 
-% Variance Decomposition of DFM
-demean = bsxfun(@minus, data, nanmean(data));
-DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));  
-[varDecomp] = VarianceDecomposition(DFMnorm, factors(1:(end-maxH+1),:), C, g);
 forecasts(forecasts == 0) = NaN;
+varDecomp = [];
+if v
+    % Variance Decomposition of DFM
+    demean = bsxfun(@minus, data, nanmean(data));
+    DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));
+    [varDecomp] = VarianceDecomposition(DFMnorm, factors(1:(end-maxH+1),:), C, g);
+end
