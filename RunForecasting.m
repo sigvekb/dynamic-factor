@@ -8,24 +8,24 @@
 % dir = 'C:\Users\sigvekb\Master\dynamic-factor';
 % dir = '\MATLAB Drive\Master\dynamic-factor';
 dataFile = 'Dataset.xlsx';
-dataSheet = 'Salmon2';
+dataSheet = 'Oil2';
 outputFile = 'ForecastingOutput';
 
 %===================
 % Forecasting input
 %===================
-horizons = [1,3,6];
-outOfSampleMonths = 48;
+horizons = [1,2,3];
+outOfSampleMonths = 36;
 
 %===========
 % DFM Input
 %===========
-blockFile = 'Blocks1.xlsx';
-blockSheet = 'B6';
+blockFile = 'BlocksOil.xlsx';
+blockSheet = 'Oil1';
 
 DFM = true;         % True: Run forecasting with DFM
 globalFactors = 0;  % Number of global factors
-maxIter = 100;       % Max number of iterations
+maxIter = 20;       % Max number of iterations
 threshold = 1e-6;   % Convergence threshold for EM algorithm
 deflate = false;    % True: Data is deflated according to US CPI
 logdiff = true;     % True: Data is log differenced
@@ -36,10 +36,10 @@ restrictQ = false;  % True: Q matrix is restricted to be diagonal
 % Benchmark model input
 %======================
 modelFile = 'Benchmarks.xlsx';
-modelSheet = 'VAR';
+modelSheet = 'Oil';
 
 ARIMA = true;
-ARIMA_ar = 3;
+ARIMA_ar = 5;
 ARIMA_ma = 2;
 
 VAR = true;

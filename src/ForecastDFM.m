@@ -27,5 +27,4 @@ end
 demean = bsxfun(@minus, data, nanmean(data));
 DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));  
 [varDecomp] = VarianceDecomposition(DFMnorm, factors(1:(end-maxH+1),:), C, g);
-
 forecasts(forecasts == 0) = NaN;
