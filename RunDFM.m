@@ -43,11 +43,12 @@ writeNormalized = false;
 %==================
 [rawData, txt] = xlsread(dataFile, dataSheet, 'A1:FZ1000');
 YoY = rawData(1,:);
+LD = rawData(2,:);
 rawData = rawData(2:end,:);
 
 inputData = rawData;
 inputData = Deflate(deflate, inputData);
-inputData = LogDiff(logdiff, inputData, YoY);
+inputData = LogDiff(logdiff, inputData, YoY, LD);
 
 [blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
 lags = blockData(1,:);

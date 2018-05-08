@@ -1,4 +1,4 @@
-function [logdiffData] = LogDiff(logdiff, data, YoY)
+function [logdiffData] = LogDiff(logdiff, data, YoY, LD)
 logdiffData = data;
 logdiffData(logdiffData == 0) = NaN;
 [T, n] = size(logdiffData);
@@ -6,7 +6,9 @@ logdiffData(logdiffData == 0) = NaN;
 if logdiff
     diffedData = zeros(T-1,n);
     for v=1:n
-        if YoY(v)
+        if LD(v)
+            diffedData(:,v) = logdiffData(2:end,v);
+        elseif YoY(v)
             first12 = log(logdiffData(1:(end-12),v));
             next12 = log(logdiffData(13:end,v));
             logdiff12 = next12-first12;

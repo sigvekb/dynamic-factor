@@ -22,10 +22,11 @@ maxVars = 3;
 % Read data
 [rawData, ~] = xlsread(dataFile, dataSheet, 'A1:FZ1000');
 YoY = rawData(1,:);
-rawData = rawData(2:end,:);
+LD = rawData(2,:);
+rawData = rawData(3:end,:);
 
 inputData = rawData;
-inputData = LogDiff(true, inputData, YoY);
+inputData = LogDiff(true, inputData, YoY, LD);
 
 % Salmon/oil must be the first variable in the dataset
 blockStruct = [ones(1,maxBlocks); reshape(ga_vec, [maxVars, maxBlocks])];
@@ -45,7 +46,7 @@ blockStruct(:,remove) = [];
 blockStruct(2:end,:) = sort(blockStruct(2:end,:), 'descend');
 blockStruct(blockStruct == 0) = NaN;
 
-VARlags = ones(1, size(blockStruct,1)+1)*lags;
+VARlags = ones(1, size(blockStruct,2)+1)*lags;
 
 [DFMData, newBlockStruct, ~] = ...
             SelectData(inputData, blockStruct);
@@ -66,7 +67,7 @@ mainActual = DFMnorm((end-oOSM+1):end,mainVar);
 naive_MAE = (1/(size(DFMnorm,1)-oOSM-1))*...
     nansum(abs(DFMnorm(2:(end-oOSM), mainVar)-DFMnorm(1:(end-oOSM-1), mainVar)));
 forecastError = (1/oOSM)*nansum(abs(mainActual-forecasts_DFM(:,1)));
-MASE = naive_MAE/forecastError;
+MASE = forecastError/naive_MAE;
 
 [~,rmse] = CalcRMSFE(mainActual, forecasts_DFM(:,1), 1);
 

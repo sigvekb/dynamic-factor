@@ -5,14 +5,14 @@ function [x, factors, iter, Aout, Cout, Qout, R, initV] = ...
 OPTS.disp = 0;
 [~,n] = size(X);
 r = size(blockStruct,2)+g;
-maxlag = max(VARlags);
-rlag = r*maxlag;
 if g>0
     VARlags = [ones(1,g-1)*VARlags(1) VARlags];
 elseif g==0
     VARlags = VARlags(1,2:end);
 end
 
+maxlag = max(VARlags);
+rlag = r*maxlag;
 
 
 demean = bsxfun(@minus, X, nanmean(X));

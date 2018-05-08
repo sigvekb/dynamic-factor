@@ -1,4 +1,4 @@
-function [statistics] = ForecastStatistics(actual, f_DFM, benchmarks, H)
+function [statistics] = ForecastStatistics(actual, f_DFM, benchmarks, H, data, oOSM)
 % Calculate all necessary statistics including RMSE, RMSFE, relative RMSE,
 % Jarque-Bera, Ljung-Box, Engle's test for heteroscedasticity, 
 % sample covariance
@@ -14,8 +14,12 @@ Engle = zeros(1,H_len);
 sampleCorr  = zeros(1,H_len);
 stdErr = zeros(1,H_len);
 relCorr = zeros(3,H_len);
+MASE = zeros(1,H_len);
 
 error_DFM = bsxfun(@minus, f_DFM, actual);
+
+naive_MAE = (1/(size(data,1)-oOSM-1))*...
+            nansum(abs(data(2:(end-oOSM), 1)-data(1:(end-oOSM-1), 1)));
 
 for h=1:H_len
     horizon = H(h);
@@ -51,7 +55,13 @@ for h=1:H_len
     LB(h) = p_lb;
     JB(h) = p_jb;
     Engle(h) = p_en;
+    
+    forecastError = (1/oOSM)*nansum(abs(error_DFM(:,h)));
+    MASE(1,h) = forecastError/naive_MAE;
 end
+
+% Calculate MASE
+
 
 statistics = [RMSE;
               RMSFE;
@@ -62,4 +72,5 @@ statistics = [RMSE;
               Engle;
               sampleCorr;
               stdErr;
-              relCorr];
+              relCorr;
+              MASE];

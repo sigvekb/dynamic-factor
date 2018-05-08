@@ -5,11 +5,10 @@
 %============
 % Data input
 %============
-% dir = 'C:\Users\sigvekb\Master\dynamic-factor';
-% dir = '\MATLAB Drive\Master\dynamic-factor';
-dataFile = 'Salmon_data.xlsx';
-dataSheet = 'Salmon2';
-outputFile = 'ForecastingOutput';
+% dataFile = 'Salmon_data.xlsx';
+% dataSheet = 'Salmon2';
+dataFile = 'Oil_data.xlsx';
+dataSheet = 'Oil';
 
 %===================
 % Forecasting input
@@ -17,15 +16,17 @@ outputFile = 'ForecastingOutput';
 horizons = [1,2,3];
 outOfSampleMonths = 36;
 
-%=========== 
+%===========
 % DFM Input
 %===========
-blockFile = 'Salmon_blocks.xlsx';
-blockSheet = 'G5';
+% blockFile = 'Salmon_blocks.xlsx';
+% blockSheet = 'G5';
+blockFile = 'Oil_blocks.xlsx';
+blockSheet = 'Oil1';
 
 DFM = true;         % True: Run forecasting with DFM
 globalFactors = 0;  % Number of global factors
-maxIter = 1000;       % Max number of iterations
+maxIter = 20;       % Max number of iterations
 threshold = 1e-4;   % Convergence threshold for EM algorithm
 deflate = false;    % True: Data is deflated according to US CPI
 logdiff = true;     % True: Data is log differenced
@@ -36,14 +37,14 @@ restrictQ = false;  % True: Q matrix is restricted to be diagonal
 % Benchmark model input
 %======================
 modelFile = 'Benchmarks.xlsx';
-modelSheet = 'Salmon';
+modelSheet = 'Oil';
 
 ARIMA = true;
-ARIMA_ar = 7;
+ARIMA_ar = 5; % Salmon ARIMA(7,0,2) Oil ARIMA(5,0,2)
 ARIMA_ma = 2;
 
 VAR = true;
-VAR_lags = 4;
+VAR_lags = 1; % Salmon VAR(4), Oil VAR(1)
 
 NOCHANGE = true;
 
@@ -52,11 +53,12 @@ NOCHANGE = true;
 %======================
 [rawData, txt] = xlsread(dataFile, dataSheet, 'A1:FZ1000');
 YoY = rawData(1,:);
-rawData = rawData(2:end,:);
+LD = rawData(2,:);
+rawData = rawData(3:end,:);
 
 inputData = rawData;
 inputData = Deflate(deflate, inputData);
-inputData = LogDiff(logdiff, inputData, YoY);
+inputData = LogDiff(logdiff, inputData, YoY, LD);
 
 %==================
 % DFM preparation
@@ -93,7 +95,7 @@ end
 % Forecasting
 %=============
 if DFM
-    [forecasts_DFM, varDecomp] = ...
+    [forecasts_DFM, varDecomp, C] = ...
         ForecastDFM(DFMData,horizons,outOfSampleMonths, globalFactors, ...
                     maxIter, threshold, selfLag, restrictQ, newBlockStruct, lags, true);
 end
@@ -127,7 +129,7 @@ if DFM
         benchmarks(:,:,3) = forecasts_NOCHANGE;
     end
     [statistics] = ForecastStatistics(mainActual, mainForecast_DFM, ...
-                                        benchmarks, horizons);
+                         benchmarks, horizons, DFMnorm,outOfSampleMonths);
 end
 
 %====================
@@ -199,9 +201,10 @@ for h=1:N
     jb_txt = strcat('Jarque Bera:', num2str(statistics(10,h),'%1.2f'), JBstars);
     en_txt = strcat('Engle Test:', num2str(statistics(11,h),'%1.2f'), ENstars);
     corr_txt = strcat('Sample Corr:',num2str(statistics(12,h),'%1.2f'));
-    relCorr_VAR = strcat('rCorr_{VAR} = ', num2str(statistics(13,h), '%1.3f'));
-    relCorr_ARIMA = strcat('rCorr_{ARIMA} = ', num2str(statistics(14,h), '%1.3f'));
-    relCorr_NOCHANGE = strcat('rCorr_{NC} = ', num2str(statistics(15,h), '%1.3f'));
+    relCorr_VAR = strcat('rCorr_{VAR} = ', num2str(statistics(14,h), '%1.3f'));
+    relCorr_ARIMA = strcat('rCorr_{ARIMA} = ', num2str(statistics(15,h), '%1.3f'));
+    relCorr_NOCHANGE = strcat('rCorr_{NC} = ', num2str(statistics(16,h), '%1.3f'));
+    MASE_txt = strcat('MASE = ', num2str(statistics(17,h), '%1.3f'));
     
     % Text box
     x = -0.3+0.33*h;
@@ -219,7 +222,7 @@ for h=1:N
     annotation(...
         'textbox',dim2,...
         'String', {'Forecast error statistics:',' ', ...
-                   lb_txt,jb_txt,en_txt,corr_txt},...
+                   lb_txt,jb_txt,en_txt,corr_txt, MASE_txt},...
         'FitBoxToText','on',...
         'FontSize',10,...
         'FontName','Times');
