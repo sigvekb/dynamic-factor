@@ -1,4 +1,4 @@
-function [rmse] = ...
+function [measure] = ...
     GA_DFM(ga_vec)
 %=========================
 % Set up DFM environment
@@ -8,12 +8,16 @@ max_iter = 10;
 thresh = 1e-6;
 selfLag = false;
 restrictQ = false;
-lags = 4;
-dataFile = '..\..\data\Salmon_data.xlsx';
-dataSheet = 'GA_vars';
+lags = 8;
+dataFile = 'Salmon_data.xlsx';
+dataSheet = 'GA_vars2';
 
-horizons = [1];
-outOfSampleMonths = 24;
+horizons = (1);
+outOfSampleMonths = 36;
+
+% Set up block structure based on ga_vec
+maxBlocks = 3;
+maxVars = 3;
 
 % Read data
 [rawData, ~] = xlsread(dataFile, dataSheet, 'A1:FZ1000');
@@ -23,13 +27,9 @@ rawData = rawData(2:end,:);
 inputData = rawData;
 inputData = LogDiff(true, inputData, YoY);
 
-% Set up block structure based on ga_vec
-maxBlocks = 2;
-maxVars = 2;
-
 % Salmon/oil must be the first variable in the dataset
 blockStruct = [ones(1,maxBlocks); reshape(ga_vec, [maxVars, maxBlocks])];
-
+oOSM = outOfSampleMonths;
 % Set duplicate values to zero
 remove = [];
 for i=1:maxBlocks
@@ -49,14 +49,34 @@ VARlags = ones(1, size(blockStruct,1)+1)*lags;
 
 [DFMData, newBlockStruct, ~] = ...
             SelectData(inputData, blockStruct);
+        
+% varNames = txt(1,2:end);
+% varNames = varNames(DFMselection);
 
 demean = bsxfun(@minus, DFMData, nanmean(DFMData));
 DFMnorm = bsxfun(@rdivide, demean, nanstd(demean));
 mainVar = 1;
-mainActual = DFMnorm((end-outOfSampleMonths+1):end,mainVar);
+mainActual = DFMnorm((end-oOSM+1):end,mainVar);
 
-[forecasts_DFM, ~] = ForecastDFM(DFMData,horizons, outOfSampleMonths, g, ...
+[forecasts_DFM, ~] = ForecastDFM(DFMData,horizons, oOSM, g, ...
                      max_iter, thresh, selfLag, restrictQ, newBlockStruct, VARlags, false);
 
 
-[~,rmse] = CalcRMSFE(mainActual, forecasts_DFM(:,1,1), 1);
+% Calc wanted measure
+naive_MAE = (1/(size(DFMnorm,1)-oOSM-1))*...
+    nansum(abs(DFMnorm(2:(end-oOSM), mainVar)-DFMnorm(1:(end-oOSM-1), mainVar)));
+forecastError = (1/oOSM)*nansum(abs(mainActual-forecasts_DFM(:,1)));
+MASE = naive_MAE/forecastError;
+
+[~,rmse] = CalcRMSFE(mainActual, forecasts_DFM(:,1), 1);
+
+%measure = rmse;
+measure = MASE;
+
+if true
+    fileID = fopen('Runs.txt','a');
+    fprintf(fileID,'\n%2.3f\n',measure);
+    fclose(fileID);
+    m = blockStruct(:);
+    dlmwrite('Runs.txt',m', '-append', 'newline','pc');
+end

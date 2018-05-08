@@ -7,7 +7,13 @@ OPTS.disp = 0;
 r = size(blockStruct,2)+g;
 maxlag = max(VARlags);
 rlag = r*maxlag;
-VARlags = [ones(1,g-1)*VARlags(1) VARlags];
+if g>0
+    VARlags = [ones(1,g-1)*VARlags(1) VARlags];
+elseif g==0
+    VARlags = VARlags(1,2:end);
+end
+
+
 
 demean = bsxfun(@minus, X, nanmean(X));
 x = bsxfun(@rdivide, demean, nanstd(X));
