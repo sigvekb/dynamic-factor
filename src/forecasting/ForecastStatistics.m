@@ -13,13 +13,10 @@ JB = zeros(1,H_len);
 Engle = zeros(1,H_len);
 sampleCorr  = zeros(1,H_len);
 stdErr = zeros(1,H_len);
-relCorr = zeros(3,H_len);
+benchCorr = zeros(3,H_len);
 MASE = zeros(1,H_len);
 
 error_DFM = bsxfun(@minus, f_DFM, actual);
-
-naive_MAE = (1/(size(data,1)-oOSM-1))*...
-            nansum(abs(data(2:(end-oOSM), 1)-data(1:(end-oOSM-1), 1)));
 
 for h=1:H_len
     horizon = H(h);
@@ -36,8 +33,8 @@ for h=1:H_len
         DM_benchmarks(i,h) = p;
         
         b = corrcoef(benchmarks(:,h,i),actual);
-        benchCorr = b(2,1);
-        relCorr(i,h) = sampleCorr(1,h) / benchCorr;
+        bCorr = b(2,1);
+        benchCorr(i,h) = bCorr;
     end
     
     %Ljung-Box Q test
@@ -46,9 +43,6 @@ for h=1:H_len
     [~,p_jb]= jbtest(error_DFM(:,h));
     %Engle test for heteroscedastisity
     [~,p_en] = archtest(error_DFM(:,h));
-    %Sample correlation
-    s = corrcoef(f_DFM(:,h),actual);
-    sampleCorr(1,h) = s(2,1);
     % Standard Error
     stdErr(1,h) = std(error_DFM(:,h));
         
@@ -56,12 +50,8 @@ for h=1:H_len
     JB(h) = p_jb;
     Engle(h) = p_en;
     
-    forecastError = (1/oOSM)*nansum(abs(error_DFM(:,h)));
-    MASE(1,h) = forecastError/naive_MAE;
+    MASE(1,h) = CalcMASE(data(1:(end-oOSM),1), error_DFM(:,h));
 end
-
-% Calculate MASE
-
 
 statistics = [RMSE;
               RMSFE;
@@ -72,5 +62,5 @@ statistics = [RMSE;
               Engle;
               sampleCorr;
               stdErr;
-              relCorr;
+              benchCorr;
               MASE];
