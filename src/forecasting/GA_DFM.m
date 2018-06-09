@@ -4,19 +4,19 @@ function [measure] = ...
 % Set up DFM environment
 %=========================
 g = 0;
-max_iter = 10;
-thresh = 1e-6;
+max_iter = 12;
+thresh = 1e-4;
 selfLag = false;
 restrictQ = false;
-lags = 8;
-dataFile = 'Salmon_data.xlsx';
-dataSheet = 'GA_vars2';
+lags = 6;
+dataFile = 'Oil_data.xlsx';
+dataSheet = 'Oil_GA1';
 
 horizons = (1);
 outOfSampleMonths = 36;
 
 % Set up block structure based on ga_vec
-maxBlocks = 3;
+maxBlocks = 5;
 maxVars = 3;
 
 % Read data
@@ -31,6 +31,8 @@ inputData = LogDiff(true, inputData, YoY, LD);
 % Salmon/oil must be the first variable in the dataset
 blockStruct = [ones(1,maxBlocks); reshape(ga_vec, [maxVars, maxBlocks])];
 oOSM = outOfSampleMonths;
+% Set negative values to zero
+blockStruct(blockStruct<0) = 0;
 % Set duplicate values to zero
 remove = [];
 for i=1:maxBlocks
@@ -64,19 +66,17 @@ mainActual = DFMnorm((end-oOSM+1):end,mainVar);
 
 
 % Calc wanted measure
-naive_MAE = (1/(size(DFMnorm,1)-oOSM-1))*...
-    nansum(abs(DFMnorm(2:(end-oOSM), mainVar)-DFMnorm(1:(end-oOSM-1), mainVar)));
-forecastError = (1/oOSM)*nansum(abs(mainActual-forecasts_DFM(:,1)));
-MASE = forecastError/naive_MAE;
+MASE = CalcMASE(DFMnorm(1:(end-oOSM),mainVar), forecasts_DFM(:,1)-mainActual);
 
 [~,rmse] = CalcRMSFE(mainActual, forecasts_DFM(:,1), 1);
 
 %measure = rmse;
-measure = MASE;
+measure = rmse+MASE;
 
-if true
+if MASE < 1
     fileID = fopen('Runs.txt','a');
-    fprintf(fileID,'\n%2.3f\n',measure);
+    fprintf(fileID,'\nMASE %2.3f, RMSE %2.3f\n',MASE, rmse);
+    fprintf('\nMASE %2.3f, RMSE %2.3f\n',MASE, rmse);
     fclose(fileID);
     m = blockStruct(:);
     dlmwrite('Runs.txt',m', '-append', 'newline','pc');

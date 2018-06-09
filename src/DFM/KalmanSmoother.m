@@ -34,8 +34,10 @@ PtTm(:,:,T)=(eye(rlag)-K(:,:,T)*C)*A*Ptt(:,:,T-1);
 for j =1:T-1
     xitT(:,T-j)= xitt(:,T-j)+J(:,:,T-j)*(xitT(:,T+1-j)-xittm(:,T+1-j));
     PtT(:,:,T-j)=Ptt(:,:,T-j)+J(:,:,T-j)*(PtT(:,:,T+1-j)-Pttm(:,:,T+1-j))*J(:,:,T-j)';
+    %PtT(:,:,T-j)=(PtT(:,:,T-j) + PtT(:,:,T-j)') / 2;
 end
 
 for j =1:T-2
     PtTm(:,:,T-j)=Ptt(:,:,T-j)*J(:,:,T-j-1)'+J(:,:,T-j)*(PtTm(:,:,T-j+1)-A*Ptt(:,:,T-j))*J(:,:,T-j-1)';
+    %PtTm(:,:,T-j)=(PtTm(:,:,T-j) + PtTm(:,:,T-j)') / 2;
 end

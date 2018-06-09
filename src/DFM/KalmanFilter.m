@@ -39,13 +39,8 @@ for j=1:T
     % See www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/ for the
     % equations below
     L = C * Pttm(:,:,j) * C' + R;
-    try
-        L_inv = CholeskyInversion(L);
-        K = (Pttm(:,:,j) * C') * L_inv;
-    catch ME
-        warning('Kalman gain: Matrix is not positive definite anymore');
-        K = (Pttm(:,:,j) * C') / L;
-    end
+    L_inv = CholeskyInversion(L);
+    K = (Pttm(:,:,j) * C') * L_inv;
     Kgain(:,:,j) = K;
     innovation = (y(:,j)-C*xittm(:,j));
     
@@ -59,10 +54,12 @@ for j=1:T
     %Ptt(:,:,j)=Pttm(:,:,j) - K * C *Pttm(:,:,j);
     Ir = eye(rlag);
     Ptt(:,:,j) = (Ir - K*C) * Pttm(:,:,j) * (Ir - K*C)' + K * R * K'; % Based on Max Welling explanations
+    %Ptt(:,:,j) = (Ptt(:,:,j) + Ptt(:,:,j)') / 2;
     
     % Get next transition predictions, predicting one-step-ahead
     xittm(:,j+1)= A * xitt(:,j);
     Pttm(:,:,j+1)= A * Ptt(:,:,j) * A' + Q;
+    %Pttm(:,:,j+1) = (Pttm(:,:,j+1) + Pttm(:,:,j+1)') / 2;
     
     % Likelihood calculation not used
     % lik(j)=((2*pi)^(-N/2))*(abs((det(C*Pttm(:,:,j)*C'+R)))^(-.5))*...

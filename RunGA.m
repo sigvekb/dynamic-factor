@@ -1,13 +1,12 @@
 %=============================================
 % FORECASTING SCHEME W/ DFM + BENCHMARK MODELS
 %=============================================
-addpath(genpath('dynamic-factor/src'))
-
-vars = 23;
+vars = 30;
+maxBlocks = 5;
 maxVars = 3;
-maxBlocks = 3;
 
-lb = zeros(1,maxVars*maxBlocks);
+
+lb = ones(1,maxVars*maxBlocks)*(-4);
 ub = ones(1,maxVars*maxBlocks)*vars;
 IntCon = (1:maxVars*maxBlocks);
 

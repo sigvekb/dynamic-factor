@@ -15,10 +15,10 @@
 
 % dir = 'C:\Users\sigvekb\Master\dynamic-factor';
 % dir = '\MATLAB Drive\Master\dynamic-factor';
-dataFile = 'Dataset.xlsx';
-dataSheet = 'Comm2';
-blockFile = 'Blocks.xlsx';
-blockSheet = 'Comm2';
+dataFile = 'Commodity_data.xlsx';
+dataSheet = 'Sheet3';
+blockFile = 'Commodity_blocks.xlsx';
+blockSheet = 'Sheet2';
 % dataFile = 'SALMON.xlsm';
 % dataSheet = 'Data1';
 % blockFile = 'Block_WBC2.xlsx';
@@ -50,7 +50,7 @@ inputData = rawData;
 inputData = Deflate(deflate, inputData);
 inputData = LogDiff(logdiff, inputData, YoY, LD);
 
-[blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:AZ100');
+[blockData, blockTxt] = xlsread(blockFile, blockSheet, 'F1:CZ100');
 lags = blockData(1,:);
 blockStruct = blockData(2:end,2:end);
 
@@ -60,9 +60,9 @@ blockStruct = blockData(2:end,2:end);
 %=======================
 % Running the algorithm
 %=======================
-[normData, F_hat, iter, C, A, Q] = ...
-    DynamicFactorModel(DFMData, totalFactors, globalFactors, maxIterations, threshold, ...
-                       newBlockStruct, nanMatrix, lags, selfLag, restrictQ, ...
+[normData, F_hat, iter, A, C, Q, R, initV] = ...
+    DynamicFactorModel(DFMData, globalFactors, maxIterations, threshold, selfLag, restrictQ,...
+                       newBlockStruct, lags,...
                        [],[],[],[]);
 
 fprintf('Finished in %d iterations', iter-1);

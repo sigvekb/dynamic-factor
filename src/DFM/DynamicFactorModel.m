@@ -100,7 +100,7 @@ while (iter < max_iter) && ~converged
     
     %Check for convergence
     converged = em_converged(loglik, previous_loglik, thresh);
-    %fprintf('Iteration %3d: %6.2f\n', iter, loglik);
+    fprintf('Iteration %3d: %6.2f\n', iter, loglik);
     
     % Set up for next iteration
     previous_loglik = loglik;
@@ -127,7 +127,7 @@ converged = 0;
 decrease = 0;
 
 if loglik - previous_loglik < -1e-3 % allow for a little imprecision
-    fprintf('!! Decrease');
+    fprintf('!Decrease\n');
     decrease = 1;
 end
 

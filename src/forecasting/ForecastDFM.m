@@ -5,10 +5,10 @@ maxH = max(H);
 
 [~,n] = size(data);
 forecasts = zeros(oosm,n,H_len);
-
-fprintf('\nNew run\n');
+c = ['\nNew run ' datestr(now,'HHMM') '\n'];
+fprintf(c);
 for t=1:(oosm+maxH-1)
-    %fprintf('\nDFM - forecasting month: %2d of %2d\n', t, oosm+maxH-1);
+    fprintf('\nDFM - forecasting month: %2d of %2d\n', t, oosm+maxH-1);
     removeMonths = oosm+maxH-t;
     
     forecastData = [data(1:(end-removeMonths),:); NaN([maxH,n])];
